@@ -1,0 +1,936 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  Sun,
+  Moon,
+  Hammer,
+  Columns,
+  Warehouse,
+  CircleDot,
+  Droplets,
+  Filter,
+  FilterX,
+  Layers,
+  Lock,
+  X,
+  Plus,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Copy,
+  RotateCcw,
+  Trash2,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  AlertCircle,
+  Sparkles,
+  Clipboard,
+  CheckSquare,
+  MessageSquare
+} from "lucide-react";
+
+import {
+  SETORES,
+  TURNOS,
+  TURMAS,
+  COR,
+  st,
+  ST,
+  fmtData,
+  gerarWpp,
+  SENHA_SUPERVISOR
+} from "./types";
+
+// Dynamic Icon rendering helper matching our Lucide imports
+const IconComponent = ({ name, className }: { name: string; className?: string }) => {
+  switch (name) {
+    case "Sun": return <Sun className={className} />;
+    case "Moon": return <Moon className={className} />;
+    case "Hammer": return <Hammer className={className} />;
+    case "Columns": return <Columns className={className} />;
+    case "Warehouse": return <Warehouse className={className} />;
+    case "CircleDot": return <CircleDot className={className} />;
+    case "Droplets": return <Droplets className={className} />;
+    case "Filter": return <Filter className={className} />;
+    case "FilterX": return <FilterX className={className} />;
+    case "Layers": return <Layers className={className} />;
+    default: return <Hammer className={className} />;
+  }
+};
+
+const LRAFT_KEY = "relatorio_turno_draft";
+
+export default function App() {
+  const [tela, setTela] = useState<"inicio" | "form" | "finalizar" | "relatorio">("inicio");
+  const [turno, setTurno] = useState<"diurno" | "noturno" | null>(null);
+  const [turma, setTurma] = useState<string | null>(null);
+  const [data, setData] = useState<string>(() => new Date().toISOString().split("T")[0]);
+  const [sup, setSup] = useState<string>("");
+  const [senha, setSenha] = useState<string>("");
+  const [senhaErro, setSenhaErro] = useState<boolean>(false);
+  const [showSenha, setShowSenha] = useState<boolean>(false);
+  const [idx, setIdx] = useState<number>(0);
+  const [dados, setDados] = useState<Record<string, Record<string, any>>>({});
+  const [acoes, setAcoes] = useState<string[]>([""]);
+  const [obs, setObs] = useState<string>("");
+  const [copiado, setCopiado] = useState<boolean>(false);
+  const [wpp, setWpp] = useState<string>("");
+
+  // Restore autosaved draft if exists
+  useEffect(() => {
+    const saved = localStorage.getItem(LRAFT_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.data) setData(parsed.data);
+        if (parsed.turno) setTurno(parsed.turno);
+        if (parsed.turma) setTurma(parsed.turma);
+        if (parsed.sup) setSup(parsed.sup);
+        if (parsed.dados) setDados(parsed.dados);
+        if (parsed.acoes) setAcoes(parsed.acoes);
+        if (parsed.obs) setObs(parsed.obs);
+      } catch (e) {
+        console.error("Erro ao ler rascunho salvo", e);
+      }
+    }
+  }, []);
+
+  // Sync draft to LocalStorage whenever things change
+  useEffect(() => {
+    if (tela !== "inicio") {
+      localStorage.setItem(
+        LRAFT_KEY,
+        JSON.stringify({ data, turno, turma, sup, dados, acoes, obs })
+      );
+    }
+  }, [data, turno, turma, sup, dados, acoes, obs, tela]);
+
+  const setor = SETORES[idx];
+  const c = COR[setor?.cor || "teal"];
+  const d = dados[setor?.id] || {};
+
+  const setDado = (sId: string, campoId: string, v: any) => {
+    setDados(p => ({
+      ...p,
+      [sId]: {
+        ...(p[sId] || {}),
+        [campoId]: v
+      }
+    }));
+  };
+
+  const preenchidos = SETORES.filter(s =>
+    s.campos.some(c => {
+      const v = dados[s.id]?.[c.id];
+      if (c.type === "atividades" || c.type === "pendencias") {
+        return Array.isArray(v) && v.some(x => x && x.trim());
+      }
+      return c.type === "number" ? v !== "" && v !== undefined : v && v.trim();
+    })
+  ).length;
+
+  // helpers para campos de lista (atividades / pendencias)
+  const getLista = (setorId: string, campoId: string): string[] => dados[setorId]?.[campoId] || [""];
+  const setLista = (setorId: string, campoId: string, lista: string[]) => {
+    setDados(p => ({
+      ...p,
+      [setorId]: {
+        ...(p[setorId] || {}),
+        [campoId]: lista
+      }
+    }));
+  };
+  const addItem = (setorId: string, campoId: string) => {
+    setLista(setorId, campoId, [...getLista(setorId, campoId), ""]);
+  };
+  const setItem = (setorId: string, campoId: string, i: number, v: string) => {
+    setLista(
+      setorId,
+      campoId,
+      getLista(setorId, campoId).map((x, j) => (j === i ? v : x))
+    );
+  };
+  const delItem = (setorId: string, campoId: string, i: number) => {
+    const list = getLista(setorId, campoId);
+    if (list.length === 1) {
+      setLista(setorId, campoId, [""]);
+    } else {
+      setLista(
+        setorId,
+        campoId,
+        list.filter((_, j) => j !== i)
+      );
+    }
+  };
+
+  function entrar() {
+    if (senha === SENHA_SUPERVISOR) {
+      setSenhaErro(false);
+      setTela("form");
+    } else {
+      setSenhaErro(true);
+      setSenha("");
+    }
+  }
+
+  function reiniciar() {
+    if (window.confirm("Deseja realmente limpar todos os campos e iniciar um novo relatório?")) {
+      localStorage.removeItem(LRAFT_KEY);
+      setTela("inicio");
+      setTurno(null);
+      setTurma(null);
+      setSup("");
+      setSenha("");
+      setIdx(0);
+      setDados({});
+      setAcoes([""]);
+      setObs("");
+      setWpp("");
+    }
+  }
+
+  function handleGerarRelatorio() {
+    const text = gerarWpp({ data, turno: turno || "diurno", turma: turma || "A", supervisor: sup, dados, acoes, obs });
+    setWpp(text);
+    setTela("relatorio");
+  }
+
+  function copiar() {
+    const fallback = () => {
+      const ta = document.createElement("textarea");
+      ta.value = wpp;
+      ta.style.cssText = "position:fixed;opacity:0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    };
+    (navigator.clipboard?.writeText(wpp) || Promise.reject())
+      .then(() => {})
+      .catch(fallback);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 3000);
+  }
+
+  // Count parameters states for overview card
+  const getOverviewCounts = () => {
+    let ok = 0, al = 0, cr = 0;
+    SETORES.forEach(s =>
+      s.campos
+        .filter(c => c.type === "number")
+        .forEach(c => {
+          const v = dados[s.id]?.[c.id];
+          if (v === "" || v === undefined || v === null) return;
+          const s2 = st(v, c.meta, c.id);
+          if (s2 === "ok") ok++;
+          else if (s2 === "alerta") al++;
+          else if (s2 === "critico") cr++;
+        })
+    );
+    return { ok, al, cr };
+  };
+
+  const counts = getOverviewCounts();
+  return (
+    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col items-center justify-start p-0 sm:p-4 overflow-x-hidden select-none">
+      
+      {/* Container Device Wrapper for gorgeous simulation */}
+      <div className="w-full max-w-lg sm:max-w-[500px] bg-white sm:rounded-3xl shadow-xl min-h-screen sm:min-h-[850px] flex flex-col justify-between border-0 sm:border border-slate-200 relative sm:my-4 overflow-hidden">
+        
+        <AnimatePresence mode="wait">
+          
+          {/* TELA: INICIO */}
+          {tela === "inicio" && (
+            <motion.div
+              key="inicio"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col justify-between h-full flex-1"
+            >
+              <div>
+                {/* Header Banner */}
+                <div className="bg-gradient-to-br from-teal-600 to-emerald-700 p-8 pt-10 rounded-b-[2rem] shadow-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="h-5 w-5 text-emerald-300 animate-pulse" />
+                    <p className="text-xs font-bold tracking-widest text-teal-100/90 uppercase">
+                      Planta de Beneficiamento de Cobre
+                    </p>
+                  </div>
+                  <h1 className="text-3xl font-extrabold tracking-tight text-white">
+                    Relatório de Turno
+                  </h1>
+                  <p className="text-teal-100/70 text-xs mt-1">
+                    Geração automatizada de relatórios operacionais integrados
+                  </p>
+                </div>
+
+                {/* Form Fields Container */}
+                <div className="p-4 space-y-4">
+                  
+                  {/* Identificacao Card */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-1">
+                      <Clipboard className="h-4 w-4 text-teal-600" />
+                      <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                        Identificação
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-slate-550 block font-medium">Data</label>
+                        <input
+                          type="date"
+                          value={data}
+                          onChange={e => setData(e.target.value)}
+                          className="w-full bg-white border border-slate-250 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none transition"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-slate-555 block font-medium">Supervisor</label>
+                        <input
+                          type="text"
+                          placeholder="Nome..."
+                          value={sup}
+                          onChange={e => setSup(e.target.value)}
+                          className="w-full bg-white border border-slate-250 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Turno Selector Card */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-3">
+                      <Sun className="h-4 w-4 text-teal-600" />
+                      <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                        Turno Operacional
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {TURNOS.map(t => {
+                        const isSel = turno === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setTurno(t.id)}
+                            className={`flex flex-col items-start p-4 rounded-xl border text-left transition ${
+                              isSel
+                                ? "bg-teal-50 border-emerald-500 text-teal-900 shadow-sm"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+                            }`}
+                          >
+                            {t.id === "diurno" ? (
+                              <Sun className={`h-6 w-6 mb-2 ${isSel ? "text-emerald-600" : "text-slate-400"}`} />
+                            ) : (
+                              <Moon className={`h-6 w-6 mb-2 ${isSel ? "text-indigo-600" : "text-slate-400"}`} />
+                            )}
+                            <span className="font-bold text-sm tracking-tight">{t.label}</span>
+                            <span className="text-[11px] text-slate-500 font-medium mt-0.5">{t.hora}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Turma Selector Card */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-3">
+                      <CheckSquare className="h-4 w-4 text-teal-600" />
+                      <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                        Turma de Trabalho
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {TURMAS.map(t => {
+                        const isSel = turma === t;
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setTurma(t)}
+                            className={`py-3.5 rounded-xl border text-center transition ${
+                              isSel
+                                ? "bg-teal-50 border-teal-500 text-teal-900 font-extrabold shadow-sm"
+                                : "bg-white border-slate-200 text-slate-500 hover:bg-slate-100"
+                            }`}
+                          >
+                            <span className="text-[9px] block text-slate-400 uppercase font-bold">Turma</span>
+                            <span className="text-xl leading-none mt-0.5 block">{t}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Password Card */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-3">
+                      <Lock className="h-4 w-4 text-teal-600" />
+                      <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                        Login Supervisor
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type={showSenha ? "text" : "password"}
+                          placeholder="Senha..."
+                          value={senha}
+                          onChange={e => {
+                            setSenha(e.target.value);
+                            setSenhaErro(false);
+                          }}
+                          onKeyDown={e => e.key === "Enter" && entrar()}
+                          className={`w-full bg-white border focus:ring-1 focus:ring-emerald-500 rounded-xl pl-3 pr-10 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition ${
+                            senhaErro ? "border-red-500" : "border-slate-250 focus:border-emerald-500"
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSenha(!showSenha)}
+                          className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 transition"
+                        >
+                          {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={entrar}
+                        disabled={!turno || !turma || !sup.trim() || !senha}
+                        className={`px-5 py-3 rounded-xl font-bold text-sm tracking-wide transition flex items-center gap-1.5 ${
+                          !turno || !turma || !sup.trim() || !senha
+                            ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                            : "bg-teal-600 hover:bg-teal-500 text-white shadow-md cursor-pointer"
+                        }`}
+                      >
+                        Entrar
+                      </button>
+                    </div>
+
+                    {senhaErro && (
+                      <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" /> Senha operativa incorreta ou inválida.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Little bottom hint footer */}
+              <div className="text-center p-3 text-[10px] text-slate-400 font-mono tracking-wider">
+                VERSION 2.4.0 — AUTO-GENERATION SYS ACTIVE
+              </div>
+            </motion.div>
+          )}
+
+          {/* TELA: FORMULARIO */}
+          {tela === "form" && (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col justify-between h-full flex-1"
+            >
+              <div>
+                {/* Header Navbar */}
+                <div className="bg-white sticky top-0 z-30 px-4 py-3 border-b border-slate-200 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-teal-50 text-teal-700 font-bold px-2 py-0.5 rounded text-[11px] tracking-wide border border-teal-200">
+                      Turma {turma}
+                    </span>
+                    <span className="text-xs text-slate-550 font-medium">
+                      {turno === "diurno" ? "☀️ Diurno" : "🌙 Noturno"} · {fmtData(data)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-600 font-bold bg-slate-550 bg-slate-50 px-2 py-1 rounded-full border border-slate-200 text-[11px]">
+                      {preenchidos}/{SETORES.length} Setores
+                    </span>
+                  </div>
+                </div>
+
+                {/* Subheader: Sector Abas Horizontal Scrolling */}
+                <div className="flex gap-2 p-3 overflow-x-auto bg-slate-50 border-b border-slate-200 scrollbar-none">
+                  {SETORES.map((s, i) => {
+                    const sc = COR[s.cor];
+                    const isSelected = i === idx;
+                    // Check if this sector has any filled field
+                    const hasData = s.campos.some(c => {
+                      const v = dados[s.id]?.[c.id];
+                      if (c.type === "atividades" || c.type === "pendencias") {
+                        return Array.isArray(v) && v.some(x => x && x.trim());
+                      }
+                      return c.type === "number" ? v !== "" && v !== undefined : v && v.trim();
+                    });
+
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setIdx(i)}
+                        className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-all duration-150 relative ${
+                          isSelected
+                            ? `${sc.bg} ${sc.bd} ${sc.tx} scale-102`
+                            : "bg-white border-slate-200 text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {s.label.split(" ")[0]}
+                        {hasData && (
+                          <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-emerald-500 border border-white" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Sector Main Heading Badge */}
+                <div className={`m-4 p-4 rounded-2xl border ${c.bg} ${c.bd} flex items-center gap-3.5 transition`}>
+                  <div className={`p-2 rounded-xl bg-white/40 shadow-sm`}>
+                    <IconComponent name={setor.icon} className={`h-6 w-6 ${c.tx}`} />
+                  </div>
+                  <div>
+                    <span className={`text-[10px] uppercase font-bold tracking-widest leading-none ${c.tx} opacity-80`}>
+                      Setor {idx + 1} de {SETORES.length}
+                    </span>
+                    <h2 className={`text-xl font-black tracking-tight mt-0.5 leading-none ${c.tx}`}>
+                      {setor.label}
+                    </h2>
+                  </div>
+                </div>
+
+                {/* Fields List */}
+                <div className="p-4 space-y-4">
+                  {setor.campos.map(campo => {
+                    
+                    // ATIVIDADES REALIZADAS FIELD LIST
+                    if (campo.type === "atividades") {
+                      const list = getLista(setor.id, campo.id);
+                      const activeCount = list.filter(x => x && x.trim()).length;
+                      return (
+                        <div key={campo.id} className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 space-y-3 shadow-sm">
+                          <div className="flex items-center justify-between border-b border-emerald-100 pb-2 mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-600">✔️</span>
+                              <label className="text-xs font-bold uppercase tracking-wider text-emerald-800">Atividades Realizadas</label>
+                            </div>
+                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-1.5 py-0.5 rounded border border-emerald-200">
+                              {activeCount}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2">
+                            {list.map((item, i) => (
+                              <div key={i} className="flex gap-2 items-center">
+                                <span className="text-xs text-emerald-600 font-bold font-mono">{i + 1}.</span>
+                                <input
+                                  type="text"
+                                  placeholder="Descrição da atividade..."
+                                  value={item}
+                                  onChange={e => setItem(setor.id, campo.id, i, e.target.value)}
+                                  className="flex-1 bg-white border border-emerald-200 focus:border-emerald-500 rounded-xl px-3 py-2 text-sm text-slate-800 outline-none transition"
+                                />
+                                {list.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => delItem(setor.id, campo.id, i)}
+                                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-lg transition"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => addItem(setor.id, campo.id)}
+                            className="bg-emerald-50 hover:bg-emerald-100 border border-dashed border-emerald-300 text-emerald-700 text-xs font-extrabold w-full py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
+                          >
+                            <Plus className="h-3.5 w-3.5" /> Adicionar Atividade
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    // PENDENCIAS CRITICAS FIELD LIST
+                    if (campo.type === "pendencias") {
+                      const list = getLista(setor.id, campo.id);
+                      const activeCount = list.filter(x => x && x.trim()).length;
+                      return (
+                        <div key={campo.id} className="bg-orange-50/50 border border-orange-200 rounded-2xl p-4 space-y-3 shadow-sm">
+                          <div className="flex items-center justify-between border-b border-orange-100 pb-2 mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-orange-600">🔴</span>
+                              <label className="text-xs font-bold uppercase tracking-wider text-orange-800">Pendências Críticas</label>
+                            </div>
+                            {activeCount > 0 && (
+                              <span className="bg-red-50 text-red-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded border border-red-200 animate-pulse">
+                                {activeCount} Pendente{activeCount > 1 ? "s" : ""}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            {list.map((item, i) => (
+                              <div key={i} className="flex gap-2 items-center">
+                                <span className="text-xs text-orange-600 font-bold font-mono">{i + 1}.</span>
+                                <input
+                                  type="text"
+                                  placeholder="Descrição da pendência..."
+                                  value={item}
+                                  onChange={e => setItem(setor.id, campo.id, i, e.target.value)}
+                                  className="flex-1 bg-white border border-orange-200 focus:border-orange-500 rounded-xl px-3 py-2 text-sm text-slate-800 outline-none transition"
+                                />
+                                {list.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => delItem(setor.id, campo.id, i)}
+                                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-lg transition"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => addItem(setor.id, campo.id)}
+                            className="bg-orange-50 hover:bg-orange-100 border border-dashed border-orange-300 text-orange-700 text-xs font-extrabold w-full py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
+                          >
+                            <Plus className="h-3.5 w-3.5" /> Adicionar Pendência
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    // STANDARD FIELD CARD TYPES (NUMBER / TEXT / SELECT)
+                    const val = d[campo.id] ?? "";
+                    return (
+                      <div key={campo.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-slate-600">
+                            {campo.label}{campo.un ? ` (${campo.un})` : ""}
+                          </label>
+                          {campo.type === "number" && campo.meta !== undefined && val !== "" && (
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                              st(val, campo.meta, campo.id) === "ok"
+                                ? "bg-emerald-50 text-emerald-800"
+                                : st(val, campo.meta, campo.id) === "alerta"
+                                ? "bg-amber-50 text-amber-800"
+                                : "bg-red-50 text-red-800"
+                            }`}>
+                              {st(val, campo.meta, campo.id).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+
+                        {campo.type === "number" && (
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder={campo.meta !== undefined ? `Meta: ${campo.meta}` : "0"}
+                            value={val}
+                            onChange={e => setDado(setor.id, campo.id, e.target.value)}
+                            className="w-full bg-white border border-slate-250 focus:border-teal-500 rounded-xl px-3.5 py-3 font-semibold text-[17px] text-slate-800 outline-none transition"
+                          />
+                        )}
+
+                        {campo.type === "text" && (
+                          <textarea
+                            rows={3}
+                            placeholder="Anormalidades, paradas significativas, desvios operacionais ou sugestões..."
+                            value={val}
+                            onChange={e => setDado(setor.id, campo.id, e.target.value)}
+                            className="w-full bg-white border border-slate-250 focus:border-teal-500 rounded-xl px-3 py-2 text-sm text-slate-800 outline-none transition resize-none focus:ring-1 focus:ring-teal-500"
+                          />
+                        )}
+
+                        {campo.type === "select" && (
+                          <select
+                            value={val}
+                            onChange={e => setDado(setor.id, campo.id, e.target.value)}
+                            className="w-full bg-white border border-slate-250 focus:border-teal-500 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none transition cursor-pointer"
+                          >
+                            <option value="">Selecione...</option>
+                            {campo.opcoes?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Bottom Sticky Action Row */}
+              <div className="sticky bottom-0 bg-white border-t border-slate-200/80 px-4 py-3 flex gap-3 z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+                {idx > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIdx(i => i - 1)}
+                    className="flex-1 border border-slate-250 text-slate-600 bg-slate-50 rounded-xl py-3 font-bold text-xs tracking-wider uppercase transition hover:bg-slate-100 flex items-center justify-center gap-1"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Anterior
+                  </button>
+                )}
+
+                {idx < SETORES.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setIdx(i => i + 1)}
+                    className="flex-[2] bg-teal-600 hover:bg-teal-500 text-white rounded-xl py-3 font-bold text-xs tracking-wider uppercase transition shadow-md flex items-center justify-center gap-1"
+                  >
+                    Próximo <ArrowRight className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setTela("finalizar")}
+                    className="flex-[2] bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-3 font-bold text-xs tracking-wider uppercase transition shadow-md flex items-center justify-center gap-1.5"
+                  >
+                    Finalizar <Check className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* TELA: FINALIZAR */}
+          {tela === "finalizar" && (
+            <motion.div
+              key="finalizar"
+              initial={{ opacity: 0, scale: 0.99 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.99 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col justify-between h-full flex-1"
+            >
+              <div>
+                {/* Header Navbar banner */}
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 shadow-md">
+                  <button
+                    type="button"
+                    onClick={() => setTela("form")}
+                    className="bg-white/20 hover:bg-white/30 text-white font-bold px-3 py-1.5 rounded-lg text-xs leading-none transition flex items-center gap-1 mb-4"
+                  >
+                    <ArrowLeft className="h-3 w-3" /> Voltar
+                  </button>
+                  <h2 className="text-2xl font-black text-white leading-none">Revisão Final</h2>
+                  <p className="text-xs text-blue-100 opacity-80 mt-1.5 font-medium">
+                    {fmtData(data)} · Turno {turno === "diurno" ? "Diurno" : "Noturno"} · Turma {turma}
+                  </p>
+                </div>
+
+                {/* Main section */}
+                <div className="p-4 space-y-4">
+                  
+                  {/* Performance Indicators Overview */}
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 text-center shadow-sm">
+                      <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider">OK</span>
+                      <span className="text-3xl font-black block mt-0.5 text-emerald-600">{counts.ok}</span>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 text-center shadow-sm">
+                      <span className="text-[10px] uppercase font-bold text-amber-800 tracking-wider">Alertas</span>
+                      <span className="text-3xl font-black block mt-0.5 text-amber-600">{counts.al}</span>
+                    </div>
+                    <div className="bg-red-50 border border-red-200/80 rounded-xl p-3 text-center shadow-sm">
+                      <span className="text-[10px] uppercase font-bold text-red-800 tracking-wider">Críticos</span>
+                      <span className="text-3xl font-black block mt-0.5 text-red-600">{counts.cr}</span>
+                    </div>
+                  </div>
+
+                  {/* Acoes Proximo Turno list */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-1">
+                      <AlertTriangle className="h-4 w-4 text-blue-600" />
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        Ações Recomendadas (Próximo Turno)
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      {acoes.map((acao, i) => (
+                        <div key={i} className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder={`Ação recomendada nº ${i + 1}...`}
+                            value={acao}
+                            onChange={e =>
+                              setAcoes(p => p.map((val, idx) => (idx === i ? e.target.value : val)))
+                            }
+                            className="flex-1 bg-white border border-slate-250 focus:border-blue-500 rounded-xl px-3 py-2 text-sm text-slate-800 outline-none transition"
+                          />
+                          {acoes.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setAcoes(p => p.filter((_, idx) => idx !== i))}
+                              className="p-2 border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setAcoes(p => [...p, ""])}
+                      className="text-blue-600 font-bold text-xs hover:text-blue-500 transition-all flex items-center gap-1"
+                    >
+                      <Plus className="h-4 w-4" /> Adicionar Ação Operativa
+                    </button>
+                  </div>
+
+                  {/* Observacao Textarea Card */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                      <MessageSquare className="h-4 w-4 text-blue-600" />
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        Comentários Operacionais Gerais
+                      </p>
+                    </div>
+                    <textarea
+                      rows={4}
+                      placeholder="Contexto adicional, destaques positivos de segurança, produtividade e alertas gerais para supervisão e gerência..."
+                      value={obs}
+                      onChange={e => setObs(e.target.value)}
+                      className="w-full bg-white border border-slate-250 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl p-3 text-sm text-slate-800 outline-none transition resize-none leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Main Action WhatsApp copy */}
+                  <button
+                    type="button"
+                    onClick={handleGerarRelatorio}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-4 font-black tracking-normal text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-2"
+                  >
+                    <Clipboard className="h-5 w-5" />
+                    Gerar e Copiar para WhatsApp
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* TELA: RELATORIO GENERATED PREVIEW */}
+          {tela === "relatorio" && (
+            <motion.div
+              key="relatorio"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col justify-between h-full flex-1"
+            >
+              <div>
+                {/* Header Navbar copy status banner */}
+                <div className={`p-6 shadow-md transition-all duration-400 ${
+                  copiado
+                    ? "bg-gradient-to-br from-emerald-600 to-teal-700"
+                    : "bg-gradient-to-br from-teal-500 to-emerald-600"
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => setTela("finalizar")}
+                    className="bg-white/20 hover:bg-white/30 text-white font-bold px-3 py-1.5 rounded-lg text-xs leading-none transition flex items-center gap-1 mb-4 border-0 outline-none"
+                  >
+                    <ArrowLeft className="h-3 w-3" /> Voltar
+                  </button>
+                  <h2 className="text-2xl font-black text-white leading-none">
+                    {copiado ? "✅ Texto Copiado!" : "Relatório Pronto"}
+                  </h2>
+                  <p className="text-xs text-teal-100/85 mt-1.5 font-medium">
+                    {copiado ? "Cole agora diretamente no seu grupo operativo" : "Toque para copiar o relatório e colar no grupo"}
+                  </p>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  {/* Copiado Quick Instruction card */}
+                  {copiado && (
+                    <motion.div
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex gap-3.5 items-start"
+                    >
+                      <div className="text-2xl leading-none">📱</div>
+                      <div>
+                        <p className="text-xs font-bold text-emerald-800">Instruções de Como Colar:</p>
+                        <ul className="text-xs text-emerald-700 mt-1 space-y-0.5 leading-relaxed font-semibold font-mono">
+                          <li>1. Abra o <strong className="text-emerald-900 font-bold">WhatsApp</strong></li>
+                          <li>2. Entre no canal/grupo do turno</li>
+                          <li>3. Pressione a caixa de mensagem e toque em <strong className="text-emerald-900 font-bold">Colar</strong></li>
+                        </ul>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Main Master Copier Action Trigger */}
+                  <button
+                    type="button"
+                    onClick={copiar}
+                    className={`w-full py-4 text-sm font-black rounded-xl border flex items-center justify-center gap-2 transition duration-200 cursor-pointer shadow-md active:scale-98 ${
+                      copiado
+                        ? "bg-emerald-800 text-white border-emerald-600"
+                        : "bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-400"
+                    }`}
+                  >
+                    <Copy className="h-5 w-5" />
+                    {copiado ? "Texto Copiado com Sucesso!" : "Copiar para o Clipboard"}
+                  </button>
+
+                  {/* Code-styled raw content preview card */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-1.5">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Visualização Prévia do Relatório
+                      </p>
+                      <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded border border-slate-250">
+                        {wpp.length} CHARS
+                      </span>
+                    </div>
+                    <pre className="text-left font-mono text-[12px] leading-relaxed text-slate-700 select-all whitespace-pre-wrap word-break break-all max-h-[350px] overflow-y-auto pr-1 bg-white p-3 rounded-xl border border-slate-200 scrollbar-thin">
+                      {wpp}
+                    </pre>
+                  </div>
+
+                  {/* Reset New shift form button */}
+                  <button
+                    type="button"
+                    onClick={reiniciar}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 hover:text-slate-800 font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2.5 cursor-pointer text-xs uppercase tracking-wider"
+                  >
+                    <RotateCcw className="h-4 w-4" /> Iniciar Novo Turno
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </div>
+
+    </div>
+  );
+}

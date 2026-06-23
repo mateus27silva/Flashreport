@@ -1,0 +1,6 @@
+{
+  "name": "Relatório de Turno — Planta Cobre",
+  "description": "Relatório de turno automatizado para a planta de beneficiamento de cobre",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
