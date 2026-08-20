@@ -36,7 +36,9 @@ import {
   MessageSquare,
   ChevronDown,
   Monitor,
-  Smartphone
+  Smartphone,
+  FileDown,
+  Loader2
 } from "lucide-react";
 
 import {
@@ -52,6 +54,7 @@ import {
   OcorrenciaPerdaSeguranca,
   EXEMPLO_OCORRENCIA
 } from "./types";
+import { gerarRelatorioPDF } from "./utils/pdfGenerator";
 
 // Dynamic Icon rendering helper matching our Lucide imports
 const IconComponent = ({ name, className }: { name: string; className?: string }) => {
@@ -87,6 +90,7 @@ export default function App() {
   const [obs, setObs] = useState<string>("");
   const [ocorrencias, setOcorrencias] = useState<OcorrenciaPerdaSeguranca[]>([]);
   const [copiado, setCopiado] = useState<boolean>(false);
+  const [baixandoPdf, setBaixandoPdf] = useState<boolean>(false);
   const [wpp, setWpp] = useState<string>("");
   const [modoWeb, setModoWeb] = useState<boolean>(() => {
     try {
@@ -472,6 +476,65 @@ export default function App() {
       .catch(fallback);
     setCopiado(true);
     setTimeout(() => setCopiado(false), 3000);
+  }
+
+  function handleBaixarPdf() {
+    try {
+      setBaixandoPdf(true);
+      const syncedDados: Record<string, Record<string, any>> = {};
+      SETORES.forEach(s => {
+        const sDados = { ...(dados[s.id] || {}) };
+        if (s.campos) {
+          if (s.campos.some(c => c.id === "disponibilidade") && (sDados.disponibilidade === undefined || sDados.disponibilidade === "")) {
+            sDados.disponibilidade = calcDisp(sDados.paradas_manutencao);
+          }
+          if (s.campos.some(c => c.id === "utilizacao") && (sDados.utilizacao === undefined || sDados.utilizacao === "")) {
+            sDados.utilizacao = calcUtil(sDados.paradas_manutencao, sDados.paradas_outros);
+          }
+          if (s.id === "britagem_primaria" && (sDados.estoque_total === undefined || sDados.estoque_total === "")) {
+            sDados.estoque_total = calcEstoqueTotal(sDados.estoque_msb, sDados.estoque_surubim, sDados.estoque_vermelhos, sDados.estoque_sucuarana);
+          }
+          if (s.id === "rebritagem" && (sDados.producao_total === undefined || sDados.producao_total === "")) {
+            sDados.producao_total = calcProducaoTotalRebritagem(sDados.producao_bypass, sDados.producao_patio);
+          }
+          if (s.id === "patio_silos" && (sDados.total_autonomia === undefined || sDados.total_autonomia === "")) {
+            sDados.total_autonomia = calcAutonomia(sDados.estoque_patio, sDados.nivel_silo1, sDados.nivel_silo2);
+          }
+          if (s.id === "moagem") {
+            if (sDados.produtividade_total === undefined || sDados.produtividade_total === "") {
+              sDados.produtividade_total = calcProdTotal(sDados.taxa_alimentacao_l1, sDados.taxa_alimentacao_l2, sDados.taxa_alimentacao_l3);
+            }
+          }
+          if (s.id === "flotacao") {
+            if (sDados.recuperacao === undefined || sDados.recuperacao === "") {
+              sDados.recuperacao = calcRecuperacao(sDados.teor_alimentacao, sDados.teor_concentrado, sDados.teor_rejeito);
+            }
+            if (sDados.metal_contido === undefined || sDados.metal_contido === "") {
+              const prodM = syncedDados["moagem"]?.producao_moagem || dados["moagem"]?.producao_moagem;
+              sDados.metal_contido = calcMetal(prodM, sDados.teor_alimentacao, sDados.recuperacao);
+            }
+            if (sDados.concentrado === undefined || sDados.concentrado === "") {
+              sDados.concentrado = calcConcentrado(sDados.metal_contido, sDados.teor_concentrado);
+            }
+          }
+        }
+        syncedDados[s.id] = sDados;
+      });
+
+      gerarRelatorioPDF({
+        data,
+        turno: turno || "diurno",
+        turma: turma || "A",
+        dados: syncedDados,
+        ocorrencias,
+        acoes,
+        obs,
+      });
+    } catch (err) {
+      console.error("Erro ao gerar PDF:", err);
+    } finally {
+      setTimeout(() => setBaixandoPdf(false), 800);
+    }
   }
 
   // Count parameters states for overview card
@@ -1459,15 +1522,36 @@ export default function App() {
                     />
                   </div>
 
-                  {/* Main Action WhatsApp copy */}
-                  <button
-                    type="button"
-                    onClick={handleGerarRelatorio}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-4 font-black tracking-normal text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-2"
-                  >
-                    <Clipboard className="h-5 w-5" />
-                    Gerar e Copiar para WhatsApp
-                  </button>
+                  {/* Action buttons: WhatsApp copy and PDF Download */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleGerarRelatorio}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-4 font-black tracking-normal text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Clipboard className="h-5 w-5" />
+                      Gerar e Copiar para WhatsApp
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleBaixarPdf}
+                      disabled={baixandoPdf}
+                      className="w-full bg-blue-700 hover:bg-blue-600 text-white rounded-xl py-4 font-black tracking-normal text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+                    >
+                      {baixandoPdf ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <span>Gerando PDF...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileDown className="h-5 w-5" />
+                          <span>Baixar Relatório em PDF</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -1521,7 +1605,7 @@ export default function App() {
                     {copiado ? "✅ Texto Copiado!" : "Relatório Pronto"}
                   </h2>
                   <p className="text-xs text-teal-100/85 mt-1.5 font-medium">
-                    {copiado ? "Cole agora diretamente no seu grupo operativo" : "Toque para copiar o relatório e colar no grupo"}
+                    {copiado ? "Cole agora diretamente no seu grupo operativo" : "Toque para copiar o relatório e colar no grupo ou baixe o PDF"}
                   </p>
                 </div>
 
@@ -1558,6 +1642,26 @@ export default function App() {
                     >
                       <Copy className="h-5 w-5" />
                       {copiado ? "Texto Copiado com Sucesso!" : "Copiar para o Clipboard"}
+                    </button>
+
+                    {/* Download Shift Report PDF Button */}
+                    <button
+                      type="button"
+                      onClick={handleBaixarPdf}
+                      disabled={baixandoPdf}
+                      className="w-full bg-blue-700 hover:bg-blue-600 text-white rounded-xl py-3.5 font-bold tracking-normal text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-75"
+                    >
+                      {baixandoPdf ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <span>Gerando PDF Oficial...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileDown className="h-5 w-5 text-blue-200" />
+                          <span>Baixar Relatório de Turno em PDF</span>
+                        </>
+                      )}
                     </button>
 
                     {/* Reset New shift form button */}
