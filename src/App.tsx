@@ -220,11 +220,35 @@ export default function App() {
     return (Math.round(conc * 10) / 10).toString();
   };
 
+  const calcEstoqueTotal = (msbStr: any, surubimStr: any, vermStr: any, sucuStr: any): string => {
+    const msb = msbStr !== "" && msbStr !== undefined && msbStr !== null ? parseFloat(msbStr) : null;
+    const sur = surubimStr !== "" && surubimStr !== undefined && surubimStr !== null ? parseFloat(surubimStr) : null;
+    const verm = vermStr !== "" && vermStr !== undefined && vermStr !== null ? parseFloat(vermStr) : null;
+    const sucu = sucuStr !== "" && sucuStr !== undefined && sucuStr !== null ? parseFloat(sucuStr) : null;
+
+    if (msb === null && sur === null && verm === null && sucu === null) return "";
+    const total = (isNaN(msb as any) || msb === null ? 0 : msb) +
+      (isNaN(sur as any) || sur === null ? 0 : sur) +
+      (isNaN(verm as any) || verm === null ? 0 : verm) +
+      (isNaN(sucu as any) || sucu === null ? 0 : sucu);
+    return (Math.round(total * 10) / 10).toString();
+  };
+
   const setDado = (sId: string, campoId: string, v: any) => {
     setDados(p => {
       const currentSector = { ...(p[sId] || {}) };
       currentSector[campoId] = v;
       const updatedAll = { ...p, [sId]: currentSector };
+
+      // Cálculo automático de Estoque Total na Britagem Primária
+      if (sId === "britagem_primaria" && (campoId === "estoque_msb" || campoId === "estoque_surubim" || campoId === "estoque_vermelhos" || campoId === "estoque_sucuarana")) {
+        const msb = campoId === "estoque_msb" ? v : currentSector["estoque_msb"];
+        const sur = campoId === "estoque_surubim" ? v : currentSector["estoque_surubim"];
+        const verm = campoId === "estoque_vermelhos" ? v : currentSector["estoque_vermelhos"];
+        const sucu = campoId === "estoque_sucuarana" ? v : currentSector["estoque_sucuarana"];
+
+        currentSector["estoque_total"] = calcEstoqueTotal(msb, sur, verm, sucu);
+      }
 
       // Cálculo automático de Disponibilidade e Utilização com base no turno de 12h
       if (campoId === "paradas_manutencao" || campoId === "paradas_outros") {
@@ -371,6 +395,9 @@ export default function App() {
         }
         if (s.campos.some(c => c.id === "utilizacao") && (sDados.utilizacao === undefined || sDados.utilizacao === "")) {
           sDados.utilizacao = calcUtil(sDados.paradas_manutencao, sDados.paradas_outros);
+        }
+        if (s.id === "britagem_primaria" && (sDados.estoque_total === undefined || sDados.estoque_total === "")) {
+          sDados.estoque_total = calcEstoqueTotal(sDados.estoque_msb, sDados.estoque_surubim, sDados.estoque_vermelhos, sDados.estoque_sucuarana);
         }
         if (s.id === "patio_silos" && (sDados.total_autonomia === undefined || sDados.total_autonomia === "")) {
           sDados.total_autonomia = calcAutonomia(sDados.estoque_patio, sDados.nivel_silo1, sDados.nivel_silo2);
@@ -898,12 +925,13 @@ export default function App() {
                     // STANDARD FIELD CARD TYPES (NUMBER / TEXT / SELECT)
                     const isDispField = campo.id === "disponibilidade";
                     const isUtilField = campo.id === "utilizacao";
+                    const isEstoqueTotalField = campo.id === "estoque_total" && setor.id === "britagem_primaria";
                     const isAutonomiaField = campo.id === "total_autonomia";
                     const isProdTotalField = campo.id === "produtividade_total";
                     const isRecuperacaoField = campo.id === "recuperacao" && setor.id === "flotacao";
                     const isMetalField = campo.id === "metal_contido" && setor.id === "flotacao";
                     const isConcentradoField = campo.id === "concentrado" && setor.id === "flotacao";
-                    const isCalcField = isDispField || isUtilField || isAutonomiaField || isProdTotalField || isRecuperacaoField || isMetalField || isConcentradoField;
+                    const isCalcField = isDispField || isUtilField || isEstoqueTotalField || isAutonomiaField || isProdTotalField || isRecuperacaoField || isMetalField || isConcentradoField;
 
                     const rawVal = d[campo.id] ?? "";
                     const val = (campo.type === "number" && isCalcField && (rawVal === "" || rawVal === undefined))
@@ -911,6 +939,8 @@ export default function App() {
                           ? calcDisp(d.paradas_manutencao) 
                           : isUtilField 
                           ? calcUtil(d.paradas_manutencao, d.paradas_outros)
+                          : isEstoqueTotalField
+                          ? calcEstoqueTotal(d.estoque_msb, d.estoque_surubim, d.estoque_vermelhos, d.estoque_sucuarana)
                           : isAutonomiaField
                           ? calcAutonomia(d.estoque_patio, d.nivel_silo1, d.nivel_silo2)
                           : isProdTotalField
@@ -979,6 +1009,11 @@ export default function App() {
                             {isUtilField && (
                               <p className="text-[11px] text-blue-700 bg-blue-50/80 border border-blue-200/60 rounded-lg px-2.5 py-1.5 font-medium">
                                 Resultado: ((12h - {d.paradas_manutencao ? `${d.paradas_manutencao}h Manut.` : "0h"} - {d.paradas_outros ? `${d.paradas_outros}h OUT` : "0h"}) / 12h) × 100 = <strong className="font-bold text-blue-900">{val}%</strong>
+                              </p>
+                            )}
+                            {isEstoqueTotalField && (
+                              <p className="text-[11px] text-teal-800 bg-teal-50/80 border border-teal-200/60 rounded-lg px-2.5 py-1.5 font-medium">
+                                Resultado: ({d.estoque_msb || 0}t MSB + {d.estoque_surubim || 0}t Surubim + {d.estoque_vermelhos || 0}t Vermelhos + {d.estoque_sucuarana || 0}t Suçuarana) = <strong className="font-bold text-teal-950">{val || "0"} t</strong>
                               </p>
                             )}
                             {isAutonomiaField && (
