@@ -234,6 +234,16 @@ export default function App() {
     return (Math.round(total * 10) / 10).toString();
   };
 
+  const calcProducaoTotalRebritagem = (bypassStr: any, patioStr: any): string => {
+    const byp = bypassStr !== "" && bypassStr !== undefined && bypassStr !== null ? parseFloat(bypassStr) : null;
+    const pat = patioStr !== "" && patioStr !== undefined && patioStr !== null ? parseFloat(patioStr) : null;
+
+    if (byp === null && pat === null) return "";
+    const total = (isNaN(byp as any) || byp === null ? 0 : byp) +
+      (isNaN(pat as any) || pat === null ? 0 : pat);
+    return (Math.round(total * 10) / 10).toString();
+  };
+
   const setDado = (sId: string, campoId: string, v: any) => {
     setDados(p => {
       const currentSector = { ...(p[sId] || {}) };
@@ -248,6 +258,14 @@ export default function App() {
         const sucu = campoId === "estoque_sucuarana" ? v : currentSector["estoque_sucuarana"];
 
         currentSector["estoque_total"] = calcEstoqueTotal(msb, sur, verm, sucu);
+      }
+
+      // Cálculo automático de Produção Total na Rebritagem (bypass + pátio)
+      if (sId === "rebritagem" && (campoId === "producao_bypass" || campoId === "producao_patio")) {
+        const byp = campoId === "producao_bypass" ? v : currentSector["producao_bypass"];
+        const pat = campoId === "producao_patio" ? v : currentSector["producao_patio"];
+
+        currentSector["producao_total"] = calcProducaoTotalRebritagem(byp, pat);
       }
 
       // Cálculo automático de Disponibilidade e Utilização com base no turno de 12h
@@ -398,6 +416,9 @@ export default function App() {
         }
         if (s.id === "britagem_primaria" && (sDados.estoque_total === undefined || sDados.estoque_total === "")) {
           sDados.estoque_total = calcEstoqueTotal(sDados.estoque_msb, sDados.estoque_surubim, sDados.estoque_vermelhos, sDados.estoque_sucuarana);
+        }
+        if (s.id === "rebritagem" && (sDados.producao_total === undefined || sDados.producao_total === "")) {
+          sDados.producao_total = calcProducaoTotalRebritagem(sDados.producao_bypass, sDados.producao_patio);
         }
         if (s.id === "patio_silos" && (sDados.total_autonomia === undefined || sDados.total_autonomia === "")) {
           sDados.total_autonomia = calcAutonomia(sDados.estoque_patio, sDados.nivel_silo1, sDados.nivel_silo2);
@@ -926,12 +947,13 @@ export default function App() {
                     const isDispField = campo.id === "disponibilidade";
                     const isUtilField = campo.id === "utilizacao";
                     const isEstoqueTotalField = campo.id === "estoque_total" && setor.id === "britagem_primaria";
+                    const isProdTotalRebritagemField = campo.id === "producao_total" && setor.id === "rebritagem";
                     const isAutonomiaField = campo.id === "total_autonomia";
                     const isProdTotalField = campo.id === "produtividade_total";
                     const isRecuperacaoField = campo.id === "recuperacao" && setor.id === "flotacao";
                     const isMetalField = campo.id === "metal_contido" && setor.id === "flotacao";
                     const isConcentradoField = campo.id === "concentrado" && setor.id === "flotacao";
-                    const isCalcField = isDispField || isUtilField || isEstoqueTotalField || isAutonomiaField || isProdTotalField || isRecuperacaoField || isMetalField || isConcentradoField;
+                    const isCalcField = isDispField || isUtilField || isEstoqueTotalField || isProdTotalRebritagemField || isAutonomiaField || isProdTotalField || isRecuperacaoField || isMetalField || isConcentradoField;
 
                     const rawVal = d[campo.id] ?? "";
                     const val = (campo.type === "number" && isCalcField && (rawVal === "" || rawVal === undefined))
@@ -941,6 +963,8 @@ export default function App() {
                           ? calcUtil(d.paradas_manutencao, d.paradas_outros)
                           : isEstoqueTotalField
                           ? calcEstoqueTotal(d.estoque_msb, d.estoque_surubim, d.estoque_vermelhos, d.estoque_sucuarana)
+                          : isProdTotalRebritagemField
+                          ? calcProducaoTotalRebritagem(d.producao_bypass, d.producao_patio)
                           : isAutonomiaField
                           ? calcAutonomia(d.estoque_patio, d.nivel_silo1, d.nivel_silo2)
                           : isProdTotalField
@@ -1014,6 +1038,11 @@ export default function App() {
                             {isEstoqueTotalField && (
                               <p className="text-[11px] text-teal-800 bg-teal-50/80 border border-teal-200/60 rounded-lg px-2.5 py-1.5 font-medium">
                                 Resultado: ({d.estoque_msb || 0}t MSB + {d.estoque_surubim || 0}t Surubim + {d.estoque_vermelhos || 0}t Vermelhos + {d.estoque_sucuarana || 0}t Suçuarana) = <strong className="font-bold text-teal-950">{val || "0"} t</strong>
+                              </p>
+                            )}
+                            {isProdTotalRebritagemField && (
+                              <p className="text-[11px] text-blue-800 bg-blue-50/80 border border-blue-200/60 rounded-lg px-2.5 py-1.5 font-medium">
+                                Resultado: ({d.producao_bypass || 0}t bypass + {d.producao_patio || 0}t pátio) = <strong className="font-bold text-blue-950">{val || "0"} t</strong>
                               </p>
                             )}
                             {isAutonomiaField && (
