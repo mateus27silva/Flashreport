@@ -34,7 +34,9 @@ import {
   Clipboard,
   CheckSquare,
   MessageSquare,
-  ChevronDown
+  ChevronDown,
+  Monitor,
+  Smartphone
 } from "lucide-react";
 
 import {
@@ -86,6 +88,23 @@ export default function App() {
   const [ocorrencias, setOcorrencias] = useState<OcorrenciaPerdaSeguranca[]>([]);
   const [copiado, setCopiado] = useState<boolean>(false);
   const [wpp, setWpp] = useState<string>("");
+  const [modoWeb, setModoWeb] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("relatorio_view_mode") === "web";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleModoWeb = () => {
+    setModoWeb(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem("relatorio_view_mode", next ? "web" : "mobile");
+      } catch {}
+      return next;
+    });
+  };
 
   // Restore autosaved draft if exists
   useEffect(() => {
@@ -451,8 +470,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col items-center justify-start p-0 sm:p-4 overflow-x-hidden select-none">
       
-      {/* Container Device Wrapper for gorgeous simulation */}
-      <div className="w-full max-w-lg sm:max-w-[500px] bg-white sm:rounded-3xl shadow-xl min-h-screen sm:min-h-[850px] flex flex-col justify-between border-0 sm:border border-slate-200 relative sm:my-4 overflow-hidden">
+      {/* Container Device Wrapper for mobile simulation or full web desktop layout */}
+      <div className={`w-full bg-white transition-all duration-300 flex flex-col justify-between border-0 sm:border border-slate-200 relative overflow-hidden ${
+        modoWeb
+          ? "max-w-6xl sm:rounded-3xl shadow-xl sm:my-6 min-h-[880px]"
+          : "w-full max-w-lg sm:max-w-[500px] sm:rounded-3xl shadow-xl min-h-screen sm:min-h-[850px] sm:my-4"
+      }`}>
         
         <AnimatePresence mode="wait">
           
@@ -468,12 +491,32 @@ export default function App() {
             >
               <div>
                 {/* Header Banner */}
-                <div className="bg-gradient-to-br from-teal-600 to-emerald-700 p-8 pt-10 rounded-b-[2rem] shadow-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="h-5 w-5 text-emerald-300 animate-pulse" />
-                    <p className="text-xs font-bold tracking-widest text-teal-100/90 uppercase">
-                      Planta de Beneficiamento de Cobre
-                    </p>
+                <div className="bg-gradient-to-br from-teal-600 to-emerald-700 p-6 sm:p-8 pt-8 sm:pt-10 rounded-b-[2rem] shadow-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-emerald-300 animate-pulse" />
+                      <p className="text-xs font-bold tracking-widest text-teal-100/90 uppercase">
+                        Planta de Beneficiamento de Cobre
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggleModoWeb}
+                      className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 shadow-sm border border-white/20 cursor-pointer"
+                      title={modoWeb ? "Alternar para modo móvel" : "Configurar página para Web / Desktop"}
+                    >
+                      {modoWeb ? (
+                        <>
+                          <Smartphone className="h-3.5 w-3.5 text-emerald-200" />
+                          <span>Modo Celular</span>
+                        </>
+                      ) : (
+                        <>
+                          <Monitor className="h-3.5 w-3.5 text-emerald-200" />
+                          <span>Configurar para Web</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                   <h1 className="text-3xl font-extrabold tracking-tight text-white">
                     Relatório de Turno
@@ -670,8 +713,26 @@ export default function App() {
                     </span>
                   </div>
                   
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-slate-600 font-bold bg-slate-550 bg-slate-50 px-2 py-1 rounded-full border border-slate-200 text-[11px]">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleModoWeb}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5 border border-slate-250 transition cursor-pointer"
+                      title={modoWeb ? "Alternar para modo móvel" : "Configurar página para Web / Desktop"}
+                    >
+                      {modoWeb ? (
+                        <>
+                          <Smartphone className="h-3.5 w-3.5 text-emerald-600" />
+                          <span className="hidden sm:inline">Modo Celular</span>
+                        </>
+                      ) : (
+                        <>
+                          <Monitor className="h-3.5 w-3.5 text-teal-600" />
+                          <span className="hidden sm:inline">Configurar Web</span>
+                        </>
+                      )}
+                    </button>
+                    <span className="text-xs text-slate-600 font-bold bg-slate-50 px-2 py-1 rounded-full border border-slate-200 text-[11px]">
                       {preenchidos}/{SETORES.length} Setores
                     </span>
                   </div>
@@ -727,7 +788,7 @@ export default function App() {
                 </div>
 
                 {/* Fields List */}
-                <div className="p-4 space-y-4">
+                <div className={`p-4 ${modoWeb ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-4"}`}>
                   {setor.campos.map(campo => {
                     
                     // ATIVIDADES REALIZADAS FIELD LIST
@@ -735,7 +796,7 @@ export default function App() {
                       const list = getLista(setor.id, campo.id);
                       const activeCount = list.filter(x => x && x.trim()).length;
                       return (
-                        <div key={campo.id} className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 space-y-3 shadow-sm">
+                        <div key={campo.id} className={`bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 space-y-3 shadow-sm ${modoWeb ? "col-span-full" : ""}`}>
                           <div className="flex items-center justify-between border-b border-emerald-100 pb-2 mb-1">
                             <div className="flex items-center gap-2">
                               <span className="text-emerald-600">✔️</span>
@@ -786,7 +847,7 @@ export default function App() {
                       const list = getLista(setor.id, campo.id);
                       const activeCount = list.filter(x => x && x.trim()).length;
                       return (
-                        <div key={campo.id} className="bg-orange-50/50 border border-orange-200 rounded-2xl p-4 space-y-3 shadow-sm">
+                        <div key={campo.id} className={`bg-orange-50/50 border border-orange-200 rounded-2xl p-4 space-y-3 shadow-sm ${modoWeb ? "col-span-full" : ""}`}>
                           <div className="flex items-center justify-between border-b border-orange-100 pb-2 mb-1">
                             <div className="flex items-center gap-2">
                               <span className="text-orange-600">🔴</span>
@@ -872,7 +933,9 @@ export default function App() {
                       : (d.nivel_silo1 !== undefined ? s1Val.toFixed(1) : (d.nivel_silo2 !== undefined ? s2Val.toFixed(1) : "0"));
 
                     return (
-                      <div key={campo.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-2.5">
+                      <div key={campo.id} className={`bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-2.5 flex flex-col justify-between ${
+                        campo.type === "text" && modoWeb ? "col-span-full" : ""
+                      }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
                             <label className="text-xs font-semibold text-slate-700">
@@ -1037,13 +1100,33 @@ export default function App() {
               <div>
                 {/* Header Navbar banner */}
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 shadow-md">
-                  <button
-                    type="button"
-                    onClick={() => setTela("form")}
-                    className="bg-white/20 hover:bg-white/30 text-white font-bold px-3 py-1.5 rounded-lg text-xs leading-none transition flex items-center gap-1 mb-4"
-                  >
-                    <ArrowLeft className="h-3 w-3" /> Voltar
-                  </button>
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setTela("form")}
+                      className="bg-white/20 hover:bg-white/30 text-white font-bold px-3 py-1.5 rounded-lg text-xs leading-none transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowLeft className="h-3 w-3" /> Voltar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggleModoWeb}
+                      className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 border border-white/20 cursor-pointer"
+                      title={modoWeb ? "Alternar para modo móvel" : "Configurar página para Web / Desktop"}
+                    >
+                      {modoWeb ? (
+                        <>
+                          <Smartphone className="h-3.5 w-3.5 text-blue-200" />
+                          <span>Modo Celular</span>
+                        </>
+                      ) : (
+                        <>
+                          <Monitor className="h-3.5 w-3.5 text-blue-200" />
+                          <span>Configurar Web</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <h2 className="text-2xl font-black text-white leading-none">Revisão Final</h2>
                   <p className="text-xs text-blue-100 opacity-80 mt-1.5 font-medium">
                     {fmtData(data)} · Turno {turno === "diurno" ? "Diurno" : "Noturno"} · Turma {turma}
@@ -1343,13 +1426,33 @@ export default function App() {
                     ? "bg-gradient-to-br from-emerald-600 to-teal-700"
                     : "bg-gradient-to-br from-teal-500 to-emerald-600"
                 }`}>
-                  <button
-                    type="button"
-                    onClick={() => setTela("finalizar")}
-                    className="bg-white/20 hover:bg-white/30 text-white font-bold px-3 py-1.5 rounded-lg text-xs leading-none transition flex items-center gap-1 mb-4 border-0 outline-none"
-                  >
-                    <ArrowLeft className="h-3 w-3" /> Voltar
-                  </button>
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setTela("finalizar")}
+                      className="bg-white/20 hover:bg-white/30 text-white font-bold px-3 py-1.5 rounded-lg text-xs leading-none transition flex items-center gap-1 border-0 outline-none cursor-pointer"
+                    >
+                      <ArrowLeft className="h-3 w-3" /> Voltar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggleModoWeb}
+                      className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 border border-white/20 cursor-pointer"
+                      title={modoWeb ? "Alternar para modo móvel" : "Configurar página para Web / Desktop"}
+                    >
+                      {modoWeb ? (
+                        <>
+                          <Smartphone className="h-3.5 w-3.5 text-emerald-200" />
+                          <span>Modo Celular</span>
+                        </>
+                      ) : (
+                        <>
+                          <Monitor className="h-3.5 w-3.5 text-emerald-200" />
+                          <span>Configurar Web</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <h2 className="text-2xl font-black text-white leading-none">
                     {copiado ? "✅ Texto Copiado!" : "Relatório Pronto"}
                   </h2>
@@ -1358,39 +1461,50 @@ export default function App() {
                   </p>
                 </div>
 
-                <div className="p-4 space-y-4">
-                  {/* Copiado Quick Instruction card */}
-                  {copiado && (
-                    <motion.div
-                      initial={{ scale: 0.95, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex gap-3.5 items-start"
-                    >
-                      <div className="text-2xl leading-none">📱</div>
-                      <div>
-                        <p className="text-xs font-bold text-emerald-800">Instruções de Como Colar:</p>
-                        <ul className="text-xs text-emerald-700 mt-1 space-y-0.5 leading-relaxed font-semibold font-mono">
-                          <li>1. Abra o <strong className="text-emerald-900 font-bold">WhatsApp</strong></li>
-                          <li>2. Entre no canal/grupo do turno</li>
-                          <li>3. Pressione a caixa de mensagem e toque em <strong className="text-emerald-900 font-bold">Colar</strong></li>
-                        </ul>
-                      </div>
-                    </motion.div>
-                  )}
+                <div className={`p-4 ${modoWeb ? "grid grid-cols-1 lg:grid-cols-2 gap-6 items-start" : "space-y-4"}`}>
+                  <div className="space-y-4">
+                    {/* Copiado Quick Instruction card */}
+                    {copiado && (
+                      <motion.div
+                        initial={{ scale: 0.95, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex gap-3.5 items-start"
+                      >
+                        <div className="text-2xl leading-none">📱</div>
+                        <div>
+                          <p className="text-xs font-bold text-emerald-800">Instruções de Como Colar:</p>
+                          <ul className="text-xs text-emerald-700 mt-1 space-y-0.5 leading-relaxed font-semibold font-mono">
+                            <li>1. Abra o <strong className="text-emerald-900 font-bold">WhatsApp</strong></li>
+                            <li>2. Entre no canal/grupo do turno</li>
+                            <li>3. Pressione a caixa de mensagem e toque em <strong className="text-emerald-900 font-bold">Colar</strong></li>
+                          </ul>
+                        </div>
+                      </motion.div>
+                    )}
 
-                  {/* Main Master Copier Action Trigger */}
-                  <button
-                    type="button"
-                    onClick={copiar}
-                    className={`w-full py-4 text-sm font-black rounded-xl border flex items-center justify-center gap-2 transition duration-200 cursor-pointer shadow-md active:scale-98 ${
-                      copiado
-                        ? "bg-emerald-800 text-white border-emerald-600"
-                        : "bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-400"
-                    }`}
-                  >
-                    <Copy className="h-5 w-5" />
-                    {copiado ? "Texto Copiado com Sucesso!" : "Copiar para o Clipboard"}
-                  </button>
+                    {/* Main Master Copier Action Trigger */}
+                    <button
+                      type="button"
+                      onClick={copiar}
+                      className={`w-full py-4 text-sm font-black rounded-xl border flex items-center justify-center gap-2 transition duration-200 cursor-pointer shadow-md active:scale-98 ${
+                        copiado
+                          ? "bg-emerald-800 text-white border-emerald-600"
+                          : "bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-400"
+                      }`}
+                    >
+                      <Copy className="h-5 w-5" />
+                      {copiado ? "Texto Copiado com Sucesso!" : "Copiar para o Clipboard"}
+                    </button>
+
+                    {/* Reset New shift form button */}
+                    <button
+                      type="button"
+                      onClick={reiniciar}
+                      className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 hover:text-slate-800 font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2.5 cursor-pointer text-xs uppercase tracking-wider"
+                    >
+                      <RotateCcw className="h-4 w-4" /> Iniciar Novo Turno
+                    </button>
+                  </div>
 
                   {/* Code-styled raw content preview card */}
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
@@ -1402,25 +1516,40 @@ export default function App() {
                         {wpp.length} CHARS
                       </span>
                     </div>
-                    <pre className="text-left font-mono text-[12px] leading-relaxed text-slate-700 select-all whitespace-pre-wrap word-break break-all max-h-[350px] overflow-y-auto pr-1 bg-white p-3 rounded-xl border border-slate-200 scrollbar-thin">
+                    <pre className={`text-left font-mono text-[12px] leading-relaxed text-slate-700 select-all whitespace-pre-wrap word-break break-all overflow-y-auto pr-1 bg-white p-3 rounded-xl border border-slate-200 scrollbar-thin ${
+                      modoWeb ? "max-h-[550px]" : "max-h-[350px]"
+                    }`}>
                       {wpp}
                     </pre>
                   </div>
-
-                  {/* Reset New shift form button */}
-                  <button
-                    type="button"
-                    onClick={reiniciar}
-                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 hover:text-slate-800 font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2.5 cursor-pointer text-xs uppercase tracking-wider"
-                  >
-                    <RotateCcw className="h-4 w-4" /> Iniciar Novo Turno
-                  </button>
                 </div>
               </div>
             </motion.div>
           )}
 
         </AnimatePresence>
+      </div>
+
+      {/* Floating Web / Mobile view mode toggle */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <button
+          type="button"
+          onClick={toggleModoWeb}
+          className="flex items-center gap-2 bg-slate-900/90 hover:bg-slate-900 text-white px-4 py-2.5 rounded-full shadow-xl border border-slate-700/80 backdrop-blur-md text-xs font-bold transition-all transform hover:scale-105 active:scale-95 cursor-pointer group"
+          title={modoWeb ? "Alternar para visualização móvel compacta" : "Configurar layout expandido para Web / Desktop"}
+        >
+          {modoWeb ? (
+            <>
+              <Smartphone className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition" />
+              <span>Modo Celular</span>
+            </>
+          ) : (
+            <>
+              <Monitor className="h-4 w-4 text-teal-400 group-hover:scale-110 transition" />
+              <span>Configurar para Web</span>
+            </>
+          )}
+        </button>
       </div>
 
     </div>

@@ -76,7 +76,7 @@ export const SETORES: Setor[] = [
     icon: "Columns",
     cor: "blue",
     campos: [
-      { id: "alimentacao", label: "Produtividade", type: "number", meta: 750, un: "t/h" },
+      { id: "alimentacao", label: "Produtividade", type: "number", meta: 1000, un: "t/h" },
       { id: "disponibilidade", label: "Disponibilidade", type: "number", meta: 88, un: "%" },
       { id: "utilizacao", label: "Utilização", type: "number", meta: 85, un: "%" },
       { id: "retido_meia", label: "% retido em 1/2", type: "number", meta: 12, un: "%" },
