@@ -29,10 +29,12 @@ import {
   EyeOff,
   AlertTriangle,
   AlertCircle,
+  ShieldAlert,
   Sparkles,
   Clipboard,
   CheckSquare,
-  MessageSquare
+  MessageSquare,
+  ChevronDown
 } from "lucide-react";
 
 import {
@@ -44,7 +46,9 @@ import {
   ST,
   fmtData,
   gerarWpp,
-  SENHA_SUPERVISOR
+  SENHA_SUPERVISOR,
+  OcorrenciaPerdaSeguranca,
+  EXEMPLO_OCORRENCIA
 } from "./types";
 
 // Dynamic Icon rendering helper matching our Lucide imports
@@ -79,6 +83,7 @@ export default function App() {
   const [dados, setDados] = useState<Record<string, Record<string, any>>>({});
   const [acoes, setAcoes] = useState<string[]>([""]);
   const [obs, setObs] = useState<string>("");
+  const [ocorrencias, setOcorrencias] = useState<OcorrenciaPerdaSeguranca[]>([]);
   const [copiado, setCopiado] = useState<boolean>(false);
   const [wpp, setWpp] = useState<string>("");
 
@@ -95,6 +100,7 @@ export default function App() {
         if (parsed.dados) setDados(parsed.dados);
         if (parsed.acoes) setAcoes(parsed.acoes);
         if (parsed.obs) setObs(parsed.obs);
+        if (parsed.ocorrencias) setOcorrencias(parsed.ocorrencias);
       } catch (e) {
         console.error("Erro ao ler rascunho salvo", e);
       }
@@ -106,23 +112,161 @@ export default function App() {
     if (tela !== "inicio") {
       localStorage.setItem(
         LRAFT_KEY,
-        JSON.stringify({ data, turno, turma, sup, dados, acoes, obs })
+        JSON.stringify({ data, turno, turma, sup, dados, acoes, obs, ocorrencias })
       );
     }
-  }, [data, turno, turma, sup, dados, acoes, obs, tela]);
+  }, [data, turno, turma, sup, dados, acoes, obs, ocorrencias, tela]);
 
   const setor = SETORES[idx];
   const c = COR[setor?.cor || "teal"];
   const d = dados[setor?.id] || {};
 
+  const calcDisp = (pmStr: any): string => {
+    const pm = pmStr !== "" && pmStr !== undefined && pmStr !== null ? parseFloat(pmStr) : 0;
+    const horasPM = isNaN(pm) ? 0 : (pm > 12 ? pm / 60 : pm);
+    const disp = Math.max(0, Math.min(100, ((12 - horasPM) / 12) * 100));
+    return (Math.round(disp * 10) / 10).toString();
+  };
+
+  const calcUtil = (pmStr: any, pOutStr: any): string => {
+    const pm = pmStr !== "" && pmStr !== undefined && pmStr !== null ? parseFloat(pmStr) : 0;
+    const pOut = pOutStr !== "" && pOutStr !== undefined && pOutStr !== null ? parseFloat(pOutStr) : 0;
+    const horasPM = isNaN(pm) ? 0 : (pm > 12 ? pm / 60 : pm);
+    const horasOut = isNaN(pOut) ? 0 : (pOut > 12 ? pOut / 60 : pOut);
+    const operadas = Math.max(0, 12 - horasPM - horasOut);
+    const util = Math.max(0, Math.min(100, (operadas / 12) * 100));
+    return (Math.round(util * 10) / 10).toString();
+  };
+
+  const calcAutonomia = (estoquePatioStr: any, silo1Str: any, silo2Str: any): string => {
+    const est = estoquePatioStr !== "" && estoquePatioStr !== undefined && estoquePatioStr !== null ? parseFloat(estoquePatioStr) : 0;
+    const s1 = silo1Str !== "" && silo1Str !== undefined && silo1Str !== null ? parseFloat(silo1Str) : null;
+    const s2 = silo2Str !== "" && silo2Str !== undefined && silo2Str !== null ? parseFloat(silo2Str) : null;
+
+    let mediaSilos = 0;
+    if (s1 !== null && s2 !== null) {
+      mediaSilos = (s1 + s2) / 2;
+    } else if (s1 !== null) {
+      mediaSilos = s1;
+    } else if (s2 !== null) {
+      mediaSilos = s2;
+    }
+
+    const fracSilos = mediaSilos > 1 ? mediaSilos / 100 : mediaSilos;
+    const total = (isNaN(est) ? 0 : est) + (fracSilos * 4800);
+    return (Math.round(total * 10) / 10).toString();
+  };
+
+  const calcProdTotal = (mi3Str: any, mi4Str: any, mi5Str: any): string => {
+    const p3 = mi3Str !== "" && mi3Str !== undefined && mi3Str !== null ? parseFloat(mi3Str) : 0;
+    const p4 = mi4Str !== "" && mi4Str !== undefined && mi4Str !== null ? parseFloat(mi4Str) : 0;
+    const p5 = mi5Str !== "" && mi5Str !== undefined && mi5Str !== null ? parseFloat(mi5Str) : 0;
+    const total = (isNaN(p3) ? 0 : p3) + (isNaN(p4) ? 0 : p4) + (isNaN(p5) ? 0 : p5);
+    return (Math.round(total * 10) / 10).toString();
+  };
+
+  const calcRecuperacao = (alimStr: any, concStr: any, rejStr: any): string => {
+    const f = alimStr !== "" && alimStr !== undefined && alimStr !== null ? parseFloat(alimStr) : null;
+    const c = concStr !== "" && concStr !== undefined && concStr !== null ? parseFloat(concStr) : null;
+    const t = rejStr !== "" && rejStr !== undefined && rejStr !== null ? parseFloat(rejStr) : null;
+
+    if (f === null || c === null || t === null || isNaN(f) || isNaN(c) || isNaN(t)) return "";
+    if (f <= 0 || c <= 0 || c <= t || f <= t) return "";
+
+    const num = c * (f - t);
+    const den = f * (c - t);
+    if (den <= 0) return "";
+
+    const rec = (num / den) * 100;
+    const clamped = Math.max(0, Math.min(100, rec));
+    return (Math.round(clamped * 10) / 10).toString();
+  };
+
+  const calcMetal = (prodMoagemStr: any, teorAlimStr: any, recStr: any): string => {
+    const prod = prodMoagemStr !== "" && prodMoagemStr !== undefined && prodMoagemStr !== null ? parseFloat(prodMoagemStr) : 0;
+    const taf = teorAlimStr !== "" && teorAlimStr !== undefined && teorAlimStr !== null ? parseFloat(teorAlimStr) : 0;
+    const rec = recStr !== "" && recStr !== undefined && recStr !== null ? parseFloat(recStr) : 0;
+
+    if (!prod || !taf || !rec) return "0";
+    const metal = (prod * taf * rec) / 10000;
+    return (Math.round(metal * 100) / 100).toString();
+  };
+
+  const calcConcentrado = (metalStr: any, teorConcStr: any): string => {
+    const metal = metalStr !== "" && metalStr !== undefined && metalStr !== null ? parseFloat(metalStr) : 0;
+    const tcf = teorConcStr !== "" && teorConcStr !== undefined && teorConcStr !== null ? parseFloat(teorConcStr) : 0;
+
+    if (!metal || !tcf) return "0";
+    const conc = metal / (tcf / 100);
+    return (Math.round(conc * 10) / 10).toString();
+  };
+
   const setDado = (sId: string, campoId: string, v: any) => {
-    setDados(p => ({
-      ...p,
-      [sId]: {
-        ...(p[sId] || {}),
-        [campoId]: v
+    setDados(p => {
+      const currentSector = { ...(p[sId] || {}) };
+      currentSector[campoId] = v;
+      const updatedAll = { ...p, [sId]: currentSector };
+
+      // Cálculo automático de Disponibilidade e Utilização com base no turno de 12h
+      if (campoId === "paradas_manutencao" || campoId === "paradas_outros") {
+        const pm = campoId === "paradas_manutencao" ? v : currentSector["paradas_manutencao"];
+        const pOut = campoId === "paradas_outros" ? v : currentSector["paradas_outros"];
+
+        currentSector["disponibilidade"] = calcDisp(pm);
+        currentSector["utilizacao"] = calcUtil(pm, pOut);
       }
-    }));
+
+      // Cálculo automático de Total Autonomia minério
+      if (sId === "patio_silos" && (campoId === "estoque_patio" || campoId === "nivel_silo1" || campoId === "nivel_silo2")) {
+        const est = campoId === "estoque_patio" ? v : currentSector["estoque_patio"];
+        const s1 = campoId === "nivel_silo1" ? v : currentSector["nivel_silo1"];
+        const s2 = campoId === "nivel_silo2" ? v : currentSector["nivel_silo2"];
+
+        currentSector["total_autonomia"] = calcAutonomia(est, s1, s2);
+      }
+
+      // Cálculo automático de Produtividade Total Moagem e atualização de Metal e Concentrado
+      if (sId === "moagem") {
+        if (campoId === "prod_mi003" || campoId === "prod_mi004" || campoId === "prod_mi005") {
+          const p3 = campoId === "prod_mi003" ? v : currentSector["prod_mi003"];
+          const p4 = campoId === "prod_mi004" ? v : currentSector["prod_mi004"];
+          const p5 = campoId === "prod_mi005" ? v : currentSector["prod_mi005"];
+
+          currentSector["produtividade_total"] = calcProdTotal(p3, p4, p5);
+        }
+        if (campoId === "producao_moagem") {
+          const flotSector = { ...(p["flotacao"] || {}) };
+          const taf = flotSector["teor_alimentacao"];
+          const tcf = flotSector["teor_concentrado"];
+          const rec = flotSector["recuperacao"] || calcRecuperacao(taf, tcf, flotSector["teor_rejeito"]);
+          const metal = calcMetal(v, taf, rec);
+          flotSector["metal_contido"] = metal;
+          flotSector["concentrado"] = calcConcentrado(metal, tcf);
+          updatedAll["flotacao"] = flotSector;
+        }
+      }
+
+      // Cálculo automático de Recuperação Metalúrgica, Metal e Concentrado da Flotação
+      if (sId === "flotacao" && (campoId === "teor_alimentacao" || campoId === "teor_concentrado" || campoId === "teor_rejeito" || campoId === "recuperacao" || campoId === "metal_contido")) {
+        const f = campoId === "teor_alimentacao" ? v : currentSector["teor_alimentacao"];
+        const c = campoId === "teor_concentrado" ? v : currentSector["teor_concentrado"];
+        const t = campoId === "teor_rejeito" ? v : currentSector["teor_rejeito"];
+
+        let rec = campoId === "recuperacao" ? v : currentSector["recuperacao"];
+        const calcRec = calcRecuperacao(f, c, t);
+        if (calcRec) {
+          rec = calcRec;
+          currentSector["recuperacao"] = rec;
+        }
+
+        const prodMoagem = p["moagem"]?.["producao_moagem"];
+        const metal = campoId === "metal_contido" ? v : calcMetal(prodMoagem, f, rec);
+        currentSector["metal_contido"] = metal;
+        currentSector["concentrado"] = calcConcentrado(metal, c);
+      }
+
+      return updatedAll;
+    });
   };
 
   const preenchidos = SETORES.filter(s =>
@@ -191,12 +335,56 @@ export default function App() {
       setDados({});
       setAcoes([""]);
       setObs("");
+      setOcorrencias([]);
       setWpp("");
     }
   }
 
   function handleGerarRelatorio() {
-    const text = gerarWpp({ data, turno: turno || "diurno", turma: turma || "A", supervisor: sup, dados, acoes, obs });
+    // Ensure all sectors with paradas have their calculated disponibilidade and utilizacao synced
+    const syncedDados: Record<string, Record<string, any>> = {};
+    SETORES.forEach(s => {
+      const sDados = { ...(dados[s.id] || {}) };
+      const hasAnyField = Object.keys(sDados).length > 0;
+      if (hasAnyField) {
+        if (s.campos.some(c => c.id === "disponibilidade") && (sDados.disponibilidade === undefined || sDados.disponibilidade === "")) {
+          sDados.disponibilidade = calcDisp(sDados.paradas_manutencao);
+        }
+        if (s.campos.some(c => c.id === "utilizacao") && (sDados.utilizacao === undefined || sDados.utilizacao === "")) {
+          sDados.utilizacao = calcUtil(sDados.paradas_manutencao, sDados.paradas_outros);
+        }
+        if (s.id === "patio_silos" && (sDados.total_autonomia === undefined || sDados.total_autonomia === "")) {
+          sDados.total_autonomia = calcAutonomia(sDados.estoque_patio, sDados.nivel_silo1, sDados.nivel_silo2);
+        }
+        if (s.id === "moagem" && (sDados.produtividade_total === undefined || sDados.produtividade_total === "")) {
+          sDados.produtividade_total = calcProdTotal(sDados.prod_mi003, sDados.prod_mi004, sDados.prod_mi005);
+        }
+        if (s.id === "flotacao") {
+          if (sDados.recuperacao === undefined || sDados.recuperacao === "") {
+            sDados.recuperacao = calcRecuperacao(sDados.teor_alimentacao, sDados.teor_concentrado, sDados.teor_rejeito);
+          }
+          if (sDados.metal_contido === undefined || sDados.metal_contido === "") {
+            const prodM = syncedDados["moagem"]?.producao_moagem || dados["moagem"]?.producao_moagem;
+            sDados.metal_contido = calcMetal(prodM, sDados.teor_alimentacao, sDados.recuperacao);
+          }
+          if (sDados.concentrado === undefined || sDados.concentrado === "") {
+            sDados.concentrado = calcConcentrado(sDados.metal_contido, sDados.teor_concentrado);
+          }
+        }
+      }
+      syncedDados[s.id] = sDados;
+    });
+
+    const text = gerarWpp({
+      data,
+      turno: turno || "diurno",
+      turma: turma || "A",
+      supervisor: sup,
+      dados: syncedDados,
+      acoes,
+      obs,
+      ocorrenciasCriticas: ocorrencias
+    });
     setWpp(text);
     setTela("relatorio");
   }
@@ -222,18 +410,40 @@ export default function App() {
   // Count parameters states for overview card
   const getOverviewCounts = () => {
     let ok = 0, al = 0, cr = 0;
-    SETORES.forEach(s =>
+    SETORES.forEach(s => {
+      const sDados = dados[s.id] || {};
+      const hasAnyField = Object.keys(sDados).length > 0;
+      if (!hasAnyField) return;
+
       s.campos
         .filter(c => c.type === "number")
         .forEach(c => {
-          const v = dados[s.id]?.[c.id];
-          if (v === "" || v === undefined || v === null) return;
+          let v = sDados[c.id];
+          if ((v === "" || v === undefined || v === null)) {
+            if (c.id === "disponibilidade") v = calcDisp(sDados.paradas_manutencao);
+            else if (c.id === "utilizacao") v = calcUtil(sDados.paradas_manutencao, sDados.paradas_outros);
+            else if (c.id === "total_autonomia" && s.id === "patio_silos") v = calcAutonomia(sDados.estoque_patio, sDados.nivel_silo1, sDados.nivel_silo2);
+            else if (c.id === "produtividade_total" && s.id === "moagem") v = calcProdTotal(sDados.prod_mi003, sDados.prod_mi004, sDados.prod_mi005);
+            else if (c.id === "recuperacao" && s.id === "flotacao") v = calcRecuperacao(sDados.teor_alimentacao, sDados.teor_concentrado, sDados.teor_rejeito);
+            else if (c.id === "metal_contido" && s.id === "flotacao") {
+              const prodM = dados["moagem"]?.producao_moagem;
+              const rec = sDados.recuperacao || calcRecuperacao(sDados.teor_alimentacao, sDados.teor_concentrado, sDados.teor_rejeito);
+              v = calcMetal(prodM, sDados.teor_alimentacao, rec);
+            }
+            else if (c.id === "concentrado" && s.id === "flotacao") {
+              const prodM = dados["moagem"]?.producao_moagem;
+              const rec = sDados.recuperacao || calcRecuperacao(sDados.teor_alimentacao, sDados.teor_concentrado, sDados.teor_rejeito);
+              const metal = sDados.metal_contido || calcMetal(prodM, sDados.teor_alimentacao, rec);
+              v = calcConcentrado(metal, sDados.teor_concentrado);
+            }
+            else return;
+          }
           const s2 = st(v, c.meta, c.id);
           if (s2 === "ok") ok++;
           else if (s2 === "alerta") al++;
           else if (s2 === "critico") cr++;
-        })
-    );
+        });
+    });
     return { ok, al, cr };
   };
 
@@ -625,13 +835,55 @@ export default function App() {
                     }
 
                     // STANDARD FIELD CARD TYPES (NUMBER / TEXT / SELECT)
-                    const val = d[campo.id] ?? "";
+                    const isDispField = campo.id === "disponibilidade";
+                    const isUtilField = campo.id === "utilizacao";
+                    const isAutonomiaField = campo.id === "total_autonomia";
+                    const isProdTotalField = campo.id === "produtividade_total";
+                    const isRecuperacaoField = campo.id === "recuperacao" && setor.id === "flotacao";
+                    const isMetalField = campo.id === "metal_contido" && setor.id === "flotacao";
+                    const isConcentradoField = campo.id === "concentrado" && setor.id === "flotacao";
+                    const isCalcField = isDispField || isUtilField || isAutonomiaField || isProdTotalField || isRecuperacaoField || isMetalField || isConcentradoField;
+
+                    const rawVal = d[campo.id] ?? "";
+                    const val = (campo.type === "number" && isCalcField && (rawVal === "" || rawVal === undefined))
+                      ? (isDispField 
+                          ? calcDisp(d.paradas_manutencao) 
+                          : isUtilField 
+                          ? calcUtil(d.paradas_manutencao, d.paradas_outros)
+                          : isAutonomiaField
+                          ? calcAutonomia(d.estoque_patio, d.nivel_silo1, d.nivel_silo2)
+                          : isProdTotalField
+                          ? calcProdTotal(d.prod_mi003, d.prod_mi004, d.prod_mi005)
+                          : isRecuperacaoField
+                          ? calcRecuperacao(d.teor_alimentacao, d.teor_concentrado, d.teor_rejeito)
+                          : isMetalField
+                          ? calcMetal(dados["moagem"]?.producao_moagem, d.teor_alimentacao, d.recuperacao || calcRecuperacao(d.teor_alimentacao, d.teor_concentrado, d.teor_rejeito))
+                          : calcConcentrado(
+                              d.metal_contido || calcMetal(dados["moagem"]?.producao_moagem, d.teor_alimentacao, d.recuperacao || calcRecuperacao(d.teor_alimentacao, d.teor_concentrado, d.teor_rejeito)),
+                              d.teor_concentrado
+                            ))
+                      : rawVal;
+
+                    // Calculate average silo percentage for formula explanation
+                    const s1Val = parseFloat(d.nivel_silo1 || "0");
+                    const s2Val = parseFloat(d.nivel_silo2 || "0");
+                    const mediaSilosPerc = (d.nivel_silo1 !== undefined && d.nivel_silo2 !== undefined)
+                      ? ((s1Val + s2Val) / 2).toFixed(1)
+                      : (d.nivel_silo1 !== undefined ? s1Val.toFixed(1) : (d.nivel_silo2 !== undefined ? s2Val.toFixed(1) : "0"));
+
                     return (
                       <div key={campo.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-semibold text-slate-600">
-                            {campo.label}{campo.un ? ` (${campo.un})` : ""}
-                          </label>
+                          <div className="flex items-center gap-1.5">
+                            <label className="text-xs font-semibold text-slate-700">
+                              {campo.label}{campo.un ? ` (${campo.un})` : ""}
+                            </label>
+                            {isCalcField && (
+                              <span className="text-[9px] font-bold uppercase tracking-wider bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded">
+                                Auto
+                              </span>
+                            )}
+                          </div>
                           {campo.type === "number" && campo.meta !== undefined && val !== "" && (
                             <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
                               st(val, campo.meta, campo.id) === "ok"
@@ -646,14 +898,62 @@ export default function App() {
                         </div>
 
                         {campo.type === "number" && (
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            placeholder={campo.meta !== undefined ? `Meta: ${campo.meta}` : "0"}
-                            value={val}
-                            onChange={e => setDado(setor.id, campo.id, e.target.value)}
-                            className="w-full bg-white border border-slate-250 focus:border-teal-500 rounded-xl px-3.5 py-3 font-semibold text-[17px] text-slate-800 outline-none transition"
-                          />
+                          <div className="space-y-1.5">
+                            <input
+                              type="number"
+                              step="any"
+                              inputMode="decimal"
+                              placeholder={campo.meta !== undefined ? `Meta: ${campo.meta}` : "0"}
+                              value={val}
+                              onChange={e => setDado(setor.id, campo.id, e.target.value)}
+                              className="w-full bg-white border border-slate-250 focus:border-teal-500 rounded-xl px-3.5 py-3 font-semibold text-[17px] text-slate-800 outline-none transition"
+                            />
+                            {isDispField && (
+                              <p className="text-[11px] text-teal-700 bg-teal-50/80 border border-teal-200/60 rounded-lg px-2.5 py-1.5 font-medium">
+                                Resultado: ((12h - {d.paradas_manutencao ? `${d.paradas_manutencao}h Manut.` : "0h Manut."}) / 12h) × 100 = <strong className="font-bold text-teal-900">{val}%</strong>
+                              </p>
+                            )}
+                            {isUtilField && (
+                              <p className="text-[11px] text-blue-700 bg-blue-50/80 border border-blue-200/60 rounded-lg px-2.5 py-1.5 font-medium">
+                                Resultado: ((12h - {d.paradas_manutencao ? `${d.paradas_manutencao}h Manut.` : "0h"} - {d.paradas_outros ? `${d.paradas_outros}h OUT` : "0h"}) / 12h) × 100 = <strong className="font-bold text-blue-900">{val}%</strong>
+                              </p>
+                            )}
+                            {isAutonomiaField && (
+                              <p className="text-[11px] text-amber-800 bg-amber-50/80 border border-amber-200/60 rounded-lg px-2.5 py-1.5 font-medium">
+                                Resultado: ({d.estoque_patio || 0}t pátio + {mediaSilosPerc}% média silos × 4800) = <strong className="font-bold text-amber-950">{val} t</strong>
+                              </p>
+                            )}
+                            {isProdTotalField && (
+                              <p className="text-[11px] text-purple-800 bg-purple-50/80 border border-purple-200/60 rounded-lg px-2.5 py-1.5 font-medium">
+                                Resultado: ({d.prod_mi003 || 0} + {d.prod_mi004 || 0} + {d.prod_mi005 || 0} t/h) = <strong className="font-bold text-purple-950">{val} t/h</strong>
+                              </p>
+                            )}
+                            {isRecuperacaoField && (
+                              <p className="text-[11px] text-orange-800 bg-orange-50/80 border border-orange-200/60 rounded-lg px-2.5 py-1.5 font-medium">
+                                Resultado: [({d.teor_concentrado || 0}% × ({d.teor_alimentacao || 0}% - {d.teor_rejeito || 0}%)) / ({d.teor_alimentacao || 0}% × ({d.teor_concentrado || 0}% - {d.teor_rejeito || 0}%))] × 100 = <strong className="font-bold text-orange-950">{val || "0"}%</strong>
+                              </p>
+                            )}
+                            {isMetalField && (
+                              <p className="text-[11px] text-amber-900 bg-amber-50/80 border border-amber-200/60 rounded-lg px-2.5 py-1.5 font-medium">
+                                Resultado: ({dados["moagem"]?.producao_moagem ? `${dados["moagem"].producao_moagem}t moagem` : "0t moagem"} × {d.teor_alimentacao || 0}% teor AF × {d.recuperacao || "0"}% rec.) / 10000 = <strong className="font-bold text-amber-950">{val || "0"} t</strong>
+                              </p>
+                            )}
+                            {isConcentradoField && (
+                              <p className="text-[11px] text-emerald-800 bg-emerald-50/80 border border-emerald-200/60 rounded-lg px-2.5 py-1.5 font-medium">
+                                Resultado: {d.metal_contido || "0"}t metal / ({d.teor_concentrado || 0}% teor CF / 100) = <strong className="font-bold text-emerald-950">{val || "0"} t</strong>
+                              </p>
+                            )}
+                            {campo.id === "paradas_manutencao" && (
+                              <p className="text-[10px] text-slate-500 font-medium pl-1">
+                                Horas de paradas de manutenção (impacta na Disponibilidade)
+                              </p>
+                            )}
+                            {campo.id === "paradas_outros" && (
+                              <p className="text-[10px] text-slate-500 font-medium pl-1">
+                                Horas de paradas operacionais/outros (impacta na Utilização)
+                              </p>
+                            )}
+                          </div>
                         )}
 
                         {campo.type === "text" && (
@@ -667,14 +967,23 @@ export default function App() {
                         )}
 
                         {campo.type === "select" && (
-                          <select
-                            value={val}
-                            onChange={e => setDado(setor.id, campo.id, e.target.value)}
-                            className="w-full bg-white border border-slate-250 focus:border-teal-500 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none transition cursor-pointer"
-                          >
-                            <option value="">Selecione...</option>
-                            {campo.opcoes?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                          </select>
+                          <div className="relative">
+                            <select
+                              value={val}
+                              onChange={e => setDado(setor.id, campo.id, e.target.value)}
+                              className="w-full bg-white border border-slate-250 focus:border-teal-500 rounded-xl px-3.5 py-3 font-semibold text-[15px] text-slate-800 outline-none transition cursor-pointer appearance-none pr-10"
+                            >
+                              <option value="">Selecione uma opção...</option>
+                              {campo.opcoes?.map(opt => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-500">
+                              <ChevronDown className="h-4 w-4" />
+                            </div>
+                          </div>
                         )}
                       </div>
                     );
@@ -758,6 +1067,189 @@ export default function App() {
                       <span className="text-[10px] uppercase font-bold text-red-800 tracking-wider">Críticos</span>
                       <span className="text-3xl font-black block mt-0.5 text-red-600">{counts.cr}</span>
                     </div>
+                  </div>
+
+                  {/* Ocorrências de Perda de Produção ou Segurança */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-red-200/80 shadow-sm space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-red-100 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert className="h-5 w-5 text-red-600 shrink-0" />
+                        <div>
+                          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                            Perda de Produção / Segurança
+                          </h3>
+                          <p className="text-[11px] text-slate-500 font-medium">
+                            Estrutura para eventos críticos, impactos, ações e restrições
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 whitespace-nowrap shrink-0">
+                        {ocorrencias.length} {ocorrencias.length === 1 ? "registro" : "registros"}
+                      </span>
+                    </div>
+
+                    {/* Action bar to add or load template */}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOcorrencias(p => [
+                            ...p,
+                            {
+                              id: Date.now().toString(),
+                              eventoPrincipal: "",
+                              impactosDanos: "",
+                              acoesRealizadas: "",
+                              linhaDoTempo: "",
+                              condicaoRestricoes: "",
+                            },
+                          ])
+                        }
+                        className="flex-1 bg-red-600 hover:bg-red-500 text-white rounded-xl py-2.5 px-3 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <Plus className="h-4 w-4" /> Adicionar Ocorrência
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOcorrencias(p => [
+                            ...p,
+                            {
+                              ...EXEMPLO_OCORRENCIA,
+                              id: Date.now().toString(),
+                            },
+                          ]);
+                        }}
+                        className="bg-white border border-red-200 text-red-700 hover:bg-red-50 rounded-xl py-2.5 px-3 text-xs font-bold transition flex items-center gap-1 shadow-2xs whitespace-nowrap"
+                        title="Carregar exemplo prático com o formato completo"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Carregar Exemplo
+                      </button>
+                    </div>
+
+                    {ocorrencias.length === 0 ? (
+                      <div className="bg-white/90 border border-dashed border-slate-300 rounded-xl p-3.5 text-center text-xs text-slate-500 font-medium">
+                        Nenhuma ocorrência crítica cadastrada. Clique em <strong className="text-red-700 font-bold">Adicionar Ocorrência</strong> para registrar paradas ou eventos de segurança com a estrutura padronizada.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {ocorrencias.map((oc, i) => (
+                          <div
+                            key={oc.id}
+                            className="bg-white rounded-xl border border-red-200/90 p-3.5 space-y-3 relative shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                              <span className="text-xs font-black text-red-700 uppercase tracking-wide flex items-center gap-1">
+                                🚨 Ocorrência #{i + 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setOcorrencias(p => p.filter(item => item.id !== oc.id))}
+                                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-lg transition"
+                                title="Excluir ocorrência"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+
+                            {/* 1. Evento Principal */}
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                                Evento Principal:
+                              </label>
+                              <textarea
+                                rows={2}
+                                placeholder="Ex: Parada por transbordo do Silo 01, causado por falsa indicação de nível no sensor da posição 02."
+                                value={oc.eventoPrincipal}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setOcorrencias(p =>
+                                    p.map(item => (item.id === oc.id ? { ...item, eventoPrincipal: val } : item))
+                                  );
+                                }}
+                                className="w-full bg-slate-50/70 border border-slate-250 focus:border-red-500 focus:bg-white rounded-lg p-2.5 text-xs text-slate-800 outline-none transition resize-none leading-relaxed"
+                              />
+                            </div>
+
+                            {/* 2. Impactos e Danos */}
+                            <div>
+                              <label className="flex items-center gap-1 text-[11px] font-bold text-slate-700 mb-1">
+                                <span>🛑</span> Impactos e Danos:
+                              </label>
+                              <textarea
+                                rows={3}
+                                placeholder="* Acúmulo de Material e Travamento: O transbordo gerou acúmulo de minério no retorno do transportador TC001 e no seu tambor de acionamento, travando o equipamento.&#10;* Dano Físico: Rompimento do cabo da chave de emergência da correia do TC001."
+                                value={oc.impactosDanos}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setOcorrencias(p =>
+                                    p.map(item => (item.id === oc.id ? { ...item, impactosDanos: val } : item))
+                                  );
+                                }}
+                                className="w-full bg-slate-50/70 border border-slate-250 focus:border-red-500 focus:bg-white rounded-lg p-2.5 text-xs text-slate-800 outline-none transition resize-none leading-relaxed"
+                              />
+                            </div>
+
+                            {/* 3. Ações Realizadas */}
+                            <div>
+                              <label className="flex items-center gap-1 text-[11px] font-bold text-slate-700 mb-1">
+                                <span>🔧</span> Ações Realizadas:
+                              </label>
+                              <textarea
+                                rows={4}
+                                placeholder="* Limpeza Mecânica/Operacional: Realizada a limpeza do minério no retorno e no acionamento do TC001.&#10;* Desobstrução: Chutes de descarga do TC005 e da PE006 foram totalmente desobstruídos.&#10;* Atuação da Elétrica:&#10;  ◦ Reparo e liberação da chave de emergência do TC001.&#10;  ◦ Manutenção no sensor da posição 02 do Silo 01..."
+                                value={oc.acoesRealizadas}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setOcorrencias(p =>
+                                    p.map(item => (item.id === oc.id ? { ...item, acoesRealizadas: val } : item))
+                                  );
+                                }}
+                                className="w-full bg-slate-50/70 border border-slate-250 focus:border-red-500 focus:bg-white rounded-lg p-2.5 text-xs text-slate-800 outline-none transition resize-none leading-relaxed"
+                              />
+                            </div>
+
+                            {/* 4. Linha do Tempo */}
+                            <div>
+                              <label className="flex items-center gap-1 text-[11px] font-bold text-slate-700 mb-1">
+                                <span>⏱️</span> Linha do Tempo:
+                              </label>
+                              <textarea
+                                rows={3}
+                                placeholder="* 18h44: Rebritagem parada (transbordo e travamento do TC001).&#10;* 20h00: Manutenção elétrica finalizada na chave de emergência.&#10;* 20h55: Equipamentos liberados e rebritagem retoma operação em modo by-pass."
+                                value={oc.linhaDoTempo}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setOcorrencias(p =>
+                                    p.map(item => (item.id === oc.id ? { ...item, linhaDoTempo: val } : item))
+                                  );
+                                }}
+                                className="w-full bg-slate-50/70 border border-slate-250 focus:border-red-500 focus:bg-white rounded-lg p-2.5 text-xs text-slate-800 outline-none transition resize-none leading-relaxed"
+                              />
+                            </div>
+
+                            {/* 5. Condição Operacional e Restrições (Status Atual) */}
+                            <div>
+                              <label className="flex items-center gap-1 text-[11px] font-bold text-slate-700 mb-1">
+                                <span>⚠️</span> Condição Operacional e Restrições (Status Atual):
+                              </label>
+                              <textarea
+                                rows={3}
+                                placeholder="A rebritagem encontra-se em operação no modo by-pass. Devido à falha contínua do sensor do Silo 01 (posição 02), a operação está rodando sob controle manual: o nível no supervisório está sendo mantido abaixo de 40% para compensar a divergência de leitura e evitar um novo transbordo."
+                                value={oc.condicaoRestricoes}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setOcorrencias(p =>
+                                    p.map(item => (item.id === oc.id ? { ...item, condicaoRestricoes: val } : item))
+                                  );
+                                }}
+                                className="w-full bg-slate-50/70 border border-slate-250 focus:border-red-500 focus:bg-white rounded-lg p-2.5 text-xs text-slate-800 outline-none transition resize-none leading-relaxed"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Acoes Proximo Turno list */}

@@ -45,10 +45,26 @@ export const SETORES: Setor[] = [
     icon: "Hammer",
     cor: "teal",
     campos: [
-      { id: "alimentacao", label: "Produtividade", type: "number", meta: 800, un: "t/h" },
+      { id: "alimentacao", label: "Produtividade", type: "number", meta: 1000, un: "t/h" },
       { id: "disponibilidade", label: "Disponibilidade", type: "number", meta: 85, un: "%" },
-      { id: "granulometria", label: "Gran. P90", type: "number", meta: 150, un: "mm" },
-      { id: "paradas", label: "Paradas", type: "number", meta: 0, un: "min" },
+      { id: "utilizacao", label: "Utilização", type: "number", meta: 80, un: "%" },
+      {
+        id: "posicao_manto",
+        label: "Posição do manto",
+        type: "select",
+        opcoes: [
+          "0%", "5%", "10%", "15%", "20%", "25%", "30%", "35%", "40%", "45%", 
+          "50%", "55%", "60%", "65%", "70%", "75%", "80%", "85%", "90%", "95%", "100%"
+        ],
+      },
+      {
+        id: "afericao_britador",
+        label: "Aferição do britador",
+        type: "select",
+        opcoes: ["Realizada", "Não realizada", "Conforme", "Ajuste necessário", "Pendente"],
+      },
+      { id: "paradas_manutencao", label: "Paradas de Manutenção", type: "number", meta: 0, un: "h" },
+      { id: "paradas_outros", label: "Paradas de Outros (OUT)", type: "number", meta: 0, un: "h" },
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
@@ -62,8 +78,10 @@ export const SETORES: Setor[] = [
     campos: [
       { id: "alimentacao", label: "Produtividade", type: "number", meta: 750, un: "t/h" },
       { id: "disponibilidade", label: "Disponibilidade", type: "number", meta: 88, un: "%" },
-      { id: "granulometria", label: "Gran. P90", type: "number", meta: 25, un: "mm" },
-      { id: "paradas", label: "Paradas", type: "number", meta: 0, un: "min" },
+      { id: "utilizacao", label: "Utilização", type: "number", meta: 85, un: "%" },
+      { id: "retido_meia", label: "% retido em 1/2", type: "number", meta: 12, un: "%" },
+      { id: "paradas_manutencao", label: "Paradas de Manutenção", type: "number", meta: 0, un: "h" },
+      { id: "paradas_outros", label: "Paradas de Outros (OUT)", type: "number", meta: 0, un: "h" },
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
@@ -78,7 +96,12 @@ export const SETORES: Setor[] = [
       { id: "estoque_patio", label: "Estoque Pátio", type: "number", meta: 5000, un: "t" },
       { id: "nivel_silo1", label: "Nível Silo 1", type: "number", meta: 70, un: "%" },
       { id: "nivel_silo2", label: "Nível Silo 2", type: "number", meta: 70, un: "%" },
-      { id: "homogeneizacao", label: "Homogeneização", type: "select", opcoes: ["Sim", "Não", "Parcial"] },
+      { id: "total_autonomia", label: "Total Autonomia minério", type: "number", meta: 8000, un: "t" },
+      { id: "retomador", label: "Retomador", type: "select", opcoes: ["Operando", "Parado", "Manutenção", "Standby", "Sim", "Não", "Parcial"] },
+      { id: "disponibilidade", label: "Disponibilidade", type: "number", meta: 90, un: "%" },
+      { id: "utilizacao", label: "Utilização", type: "number", meta: 85, un: "%" },
+      { id: "paradas_manutencao", label: "Paradas de Manutenção", type: "number", meta: 0, un: "h" },
+      { id: "paradas_outros", label: "Paradas de Outros (OUT)", type: "number", meta: 0, un: "h" },
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
@@ -90,11 +113,18 @@ export const SETORES: Setor[] = [
     icon: "CircleDot",
     cor: "purple",
     campos: [
-      { id: "alimentacao", label: "Produtividade", type: "number", meta: 600, un: "t/h" },
-      { id: "granulometria", label: "Percentual 105microns", type: "number", meta: 62, un: "%" },
-      { id: "densidade_polpa", label: "Dens. Polpa", type: "number", meta: 1.67, un: "kg/L" },
+      { id: "producao_moagem", label: "Produção Moagem", type: "number", meta: 6000, un: "t" },
+      { id: "prod_mi003", label: "Produtividade 43MI003", type: "number", meta: 200, un: "t/h" },
+      { id: "prod_mi004", label: "Produtividade 43MI004", type: "number", meta: 200, un: "t/h" },
+      { id: "prod_mi005", label: "Produtividade 43MI005", type: "number", meta: 200, un: "t/h" },
+      { id: "produtividade_total", label: "Produtividade Total", type: "number", meta: 600, un: "t/h" },
+      { id: "granulometria_mi03", label: "Percentual 105microns (43MI003)", type: "number", meta: 62, un: "%" },
+      { id: "granulometria_mi04", label: "Percentual 105microns (43MI004)", type: "number", meta: 62, un: "%" },
+      { id: "granulometria_mi05", label: "Percentual 105microns (43MI005)", type: "number", meta: 62, un: "%" },
       { id: "disponibilidade", label: "Disponibilidade", type: "number", meta: 90, un: "%" },
-      { id: "paradas", label: "Paradas", type: "number", meta: 0, un: "min" },
+      { id: "utilizacao", label: "Utilização", type: "number", meta: 85, un: "%" },
+      { id: "paradas_manutencao", label: "Paradas de Manutenção", type: "number", meta: 0, un: "h" },
+      { id: "paradas_outros", label: "Paradas de Outros (OUT)", type: "number", meta: 0, un: "h" },
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
@@ -106,15 +136,20 @@ export const SETORES: Setor[] = [
     icon: "Droplets",
     cor: "coral",
     campos: [
+      { id: "circuito", label: "Circuito", type: "select", opcoes: ["CI", "CII", "CIII", "CIV"] },
       { id: "teor_alimentacao", label: "Teor Alim. Cu", type: "number", meta: 1.2, un: "%" },
       { id: "teor_concentrado", label: "Teor Conc. Cu", type: "number", meta: 33.5, un: "%" },
-      { id: "recuperacao", label: "Recuperação", type: "number", meta: 88, un: "%" },
+      { id: "teor_rejeito", label: "Teor Rejeito Final Cu", type: "number", meta: 0.10, un: "%" },
+      { id: "recuperacao", label: "Recuperação Metalúrgica", type: "number", meta: 88, un: "%" },
+      { id: "metal_contido", label: "Metal", type: "number", meta: 63.3, un: "t" },
+      { id: "concentrado", label: "Concentrado", type: "number", meta: 189, un: "t" },
       { id: "ph_rougher", label: "pH Linha principal", type: "number", meta: 9.5, un: "" },
+      { id: "ph_segunda_linha", label: "pH Segunda linha", type: "number", meta: 9.5, un: "" },
       { id: "consumo_coletor", label: "Coletor", type: "number", meta: 35, un: "g/t" },
       { id: "consumo_espumante", label: "Espumante", type: "number", meta: 25, un: "g/t" },
+      { id: "consumo_dispersante", label: "Dispersante", type: "number", meta: 25, un: "g/t" },
       { id: "consumo_cmc", label: "CMC", type: "number", meta: 200, un: "g/t" },
       { id: "consumo_amidex", label: "Amidex", type: "number", meta: 60, un: "g/t" },
-      { id: "disponibilidade", label: "Disponibilidade", type: "number", meta: 92, un: "%" },
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
@@ -126,10 +161,16 @@ export const SETORES: Setor[] = [
     icon: "Filter",
     cor: "green",
     campos: [
-      { id: "densidade_underflow", label: "Dens. Underflow", type: "number", meta: 1650, un: "g/L" },
-      { id: "vazao_overflow", label: "Vazão Overflow", type: "number", meta: 120, un: "m³/h" },
-      { id: "nivel", label: "Nível", type: "number", meta: 60, un: "%" },
+      { id: "espessador_operacao", label: "Espessador em operação", type: "select", opcoes: ["44EP001", "44EP002", "Ambos"] },
+      { id: "densidade_underflow", label: "Dens. Underflow", type: "number", meta: 1850, un: "g/L" },
+      { id: "solidos_44ep001", label: "Percentual de sólidos 44EP001", type: "number", meta: 65, un: "%" },
+      { id: "solidos_44ep002", label: "Percentual de sólidos 44EP002", type: "number", meta: 65, un: "%" },
+      { id: "nivel_tanque", label: "Nível do Tanque", type: "number", meta: 60, un: "%" },
       { id: "consumo_floculante", label: "Floculante", type: "number", meta: 25, un: "g/t" },
+      { id: "elevacao_rake_ep001", label: "Elevação do Rake 44EP001", type: "number", meta: 0, un: "mm" },
+      { id: "elevacao_rake_ep002", label: "Elevação do Rake 44EP002", type: "number", meta: 0, un: "mm" },
+      { id: "corrente_ep001", label: "Corrente 44EP001", type: "number", meta: 15, un: "A" },
+      { id: "corrente_ep002", label: "Corrente 44EP002", type: "number", meta: 15, un: "A" },
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
@@ -141,10 +182,16 @@ export const SETORES: Setor[] = [
     icon: "FilterX",
     cor: "gray",
     campos: [
+      { id: "espessador_operacao", label: "Espessador em operação", type: "select", opcoes: ["45EP001", "45EP002", "Ambos"] },
       { id: "densidade_underflow", label: "Dens. Underflow", type: "number", meta: 1400, un: "g/L" },
-      { id: "vazao_overflow", label: "Vazão Overflow", type: "number", meta: 800, un: "m³/h" },
-      { id: "nivel", label: "Nível", type: "number", meta: 55, un: "%" },
+      { id: "solidos_45ep001", label: "Percentual de sólidos 45EP001", type: "number", meta: 55, un: "%" },
+      { id: "solidos_45ep002", label: "Percentual de sólidos 45EP002", type: "number", meta: 55, un: "%" },
+      { id: "solidos_45bh01", label: "Percentual de sólidos 45BH01", type: "number", meta: 55, un: "%" },
+      { id: "solidos_45bh02", label: "Percentual de sólidos 45BH02", type: "number", meta: 55, un: "%" },
+      { id: "solidos_45bh03", label: "Percentual de sólidos 45BH03", type: "number", meta: 55, un: "%" },
       { id: "consumo_floculante", label: "Floculante", type: "number", meta: 18, un: "g/t" },
+      { id: "torque_ep001", label: "Torque 45EP001", type: "number", meta: 40, un: "%" },
+      { id: "torque_ep002", label: "Torque 45EP002", type: "number", meta: 40, un: "%" },
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
@@ -158,9 +205,15 @@ export const SETORES: Setor[] = [
     campos: [
       { id: "umidade", label: "Umidade do Bolo", type: "number", meta: 9.5, un: "%" },
       { id: "producao", label: "Produtividade", type: "number", meta: 30, un: "t/h" },
+      { id: "tipo_lavagem", label: "Tipo de lavagem", type: "select", opcoes: ["Simples", "Dupla"] },
+      { id: "vazao_fim_compactacao", label: "Vazão ao final da compactação", type: "number", meta: 45, un: "m³/h" },
+      { id: "pressao_fim_compactacao", label: "Pressão final da compactação", type: "number", meta: 230, un: "kPa" },
+      { id: "setpoint_peso_torta", label: "Setpoint Peso da torta", type: "number", meta: 8000, un: "kg" },
       { id: "ciclos", label: "Ciclos", type: "number", meta: 24, un: "" },
       { id: "disponibilidade", label: "Disponibilidade", type: "number", meta: 90, un: "%" },
-      { id: "paradas", label: "Paradas", type: "number", meta: 0, un: "min" },
+      { id: "utilizacao", label: "Utilização", type: "number", meta: 85, un: "%" },
+      { id: "paradas_manutencao", label: "Paradas de Manutenção", type: "number", meta: 0, un: "h" },
+      { id: "paradas_outros", label: "Paradas de Outros (OUT)", type: "number", meta: 0, un: "h" },
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
@@ -184,8 +237,8 @@ export function st(val: string | number, meta: number | undefined, id: string): 
   const v = parseFloat(val as string);
   const m = parseFloat(meta as any);
   if (isNaN(v)) return "nd";
-  if (id === "paradas") {
-    return v === 0 ? "ok" : v <= 30 ? "alerta" : "critico";
+  if (id === "paradas" || id === "paradas_manutencao" || id === "paradas_outros" || id.startsWith("elevacao_rake")) {
+    return v === 0 ? "ok" : v <= 50 ? "alerta" : "critico";
   }
   const p = (v / m) * 100;
   return p >= 95 ? "ok" : p >= 80 ? "alerta" : "critico";
@@ -211,6 +264,24 @@ export function fmtData(iso: string): string {
   return `${d}/${m}/${y}`;
 }
 
+export interface OcorrenciaPerdaSeguranca {
+  id: string;
+  eventoPrincipal: string;
+  impactosDanos: string;
+  acoesRealizadas: string;
+  linhaDoTempo: string;
+  condicaoRestricoes: string;
+}
+
+export const EXEMPLO_OCORRENCIA: OcorrenciaPerdaSeguranca = {
+  id: "exemplo_1",
+  eventoPrincipal: "Parada por transbordo do Silo 01, causado por falsa indicação de nível no sensor da posição 02.",
+  impactosDanos: `* Acúmulo de Material e Travamento: O transbordo gerou acúmulo de minério no retorno do transportador TC001 e no seu tambor de acionamento, travando o equipamento.\n* Dano Físico: Rompimento do cabo da chave de emergência da correia do TC001.`,
+  acoesRealizadas: `* Limpeza Mecânica/Operacional: Realizada a limpeza do minério no retorno e no acionamento do TC001.\n* Desobstrução: Chutes de descarga do TC005 e da PE006 foram totalmente desobstruídos.\n* Atuação da Elétrica:\n  ◦ Reparo e liberação da chave de emergência do TC001.\n  ◦ Manutenção no sensor da posição 02 do Silo 01. Atenção: O sensor não normalizou. Atualmente, o sistema supervisório indica 68%, mas a verificação visual em campo confirma que o silo está em 100%.`,
+  linhaDoTempo: `* 18h44: Rebritagem parada (transbordo e travamento do TC001).\n* 20h00: Manutenção elétrica finalizada na chave de emergência.\n* 20h55: Equipamentos liberados e rebritagem retoma operação em modo by-pass.`,
+  condicaoRestricoes: `A rebritagem encontra-se em operação no modo by-pass. Devido à falha contínua do sensor do Silo 01 (posição 02), a operação está rodando sob controle manual: o nível no supervisório está sendo mantido abaixo de 40% para compensar a divergência de leitura e evitar um novo transbordo.`,
+};
+
 interface GerarWppParams {
   data: string;
   turno: "diurno" | "noturno";
@@ -219,9 +290,10 @@ interface GerarWppParams {
   dados: Record<string, Record<string, any>>;
   acoes: string[];
   obs: string;
+  ocorrenciasCriticas?: OcorrenciaPerdaSeguranca[];
 }
 
-export function gerarWpp({ data, turno, turma, supervisor, dados, acoes, obs }: GerarWppParams): string {
+export function gerarWpp({ data, turno, turma, supervisor, dados, acoes, obs, ocorrenciasCriticas }: GerarWppParams): string {
   const tl = turno === "diurno" ? "☀️ Diurno (07h–19h)" : "🌙 Noturno (19h–07h)";
   const hr = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   const L: string[] = [];
@@ -289,6 +361,47 @@ export function gerarWpp({ data, turno, turma, supervisor, dados, acoes, obs }: 
     L.push(``);
   }
 
+  // Ocorrências estruturadas de Perda de Produção / Segurança
+  if (ocorrenciasCriticas && ocorrenciasCriticas.length > 0) {
+    const validOcs = ocorrenciasCriticas.filter(
+      oc => oc.eventoPrincipal?.trim() || oc.impactosDanos?.trim() || oc.acoesRealizadas?.trim() || oc.linhaDoTempo?.trim() || oc.condicaoRestricoes?.trim()
+    );
+    if (validOcs.length > 0) {
+      L.push(`━━━━━━━━━━━━━━━━━━`);
+      L.push(`🚨 *OCORRÊNCIAS DE PERDA DE PRODUÇÃO / SEGURANÇA*`);
+      L.push(``);
+      validOcs.forEach((oc, i) => {
+        if (validOcs.length > 1) {
+          L.push(`*Ocorrência #${i + 1}*`);
+        }
+        if (oc.eventoPrincipal?.trim()) {
+          L.push(`*Evento Principal:* ${oc.eventoPrincipal.trim()}`);
+          L.push(``);
+        }
+        if (oc.impactosDanos?.trim()) {
+          L.push(`🛑 *Impactos e Danos*`);
+          L.push(oc.impactosDanos.trim());
+          L.push(``);
+        }
+        if (oc.acoesRealizadas?.trim()) {
+          L.push(`🔧 *Ações Realizadas*`);
+          L.push(oc.acoesRealizadas.trim());
+          L.push(``);
+        }
+        if (oc.linhaDoTempo?.trim()) {
+          L.push(`⏱️ *Linha do Tempo*`);
+          L.push(oc.linhaDoTempo.trim());
+          L.push(``);
+        }
+        if (oc.condicaoRestricoes?.trim()) {
+          L.push(`⚠️ *Condição Operacional e Restrições (Status Atual)*`);
+          L.push(oc.condicaoRestricoes.trim());
+          L.push(``);
+        }
+      });
+    }
+  }
+
   SETORES.forEach(s => {
     const d = dados[s.id] || {};
     const campos = s.campos.filter(c => {
@@ -305,6 +418,10 @@ export function gerarWpp({ data, turno, turma, supervisor, dados, acoes, obs }: 
     campos.forEach(c => {
       if (c.type === "text") {
         L.push(`📝 ${d[c.id]}`);
+        return;
+      }
+      if (c.type === "select") {
+        L.push(`🔹 ${c.label}: *${d[c.id]}*`);
         return;
       }
       if (c.type === "atividades") {
