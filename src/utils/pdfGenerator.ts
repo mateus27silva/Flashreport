@@ -6,6 +6,7 @@ export interface PDFDataPayload {
   data: string;
   turno: string;
   turma: string;
+  temaDds?: string;
   dados: Record<string, Record<string, any>>;
   ocorrencias: OcorrenciaPerdaSeguranca[];
   acoes: string[];
@@ -13,7 +14,7 @@ export interface PDFDataPayload {
 }
 
 export function gerarRelatorioPDF(payload: PDFDataPayload) {
-  const { data, turno, turma, dados, ocorrencias, acoes, obs } = payload;
+  const { data, turno, turma, temaDds, dados, ocorrencias, acoes, obs } = payload;
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -120,9 +121,28 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.text("1. SEGURANÇA, MEIO AMBIENTE E PERDAS DE PROCESSO", margin + 3, currentY + 4.8);
+  doc.text("1. SEGURANÇA, MEIO AMBIENTE E DDS", margin + 3, currentY + 4.8);
 
   currentY += 9;
+
+  // Tema do DDS (se preenchido)
+  if (temaDds && temaDds.trim()) {
+    doc.setFillColor(239, 246, 255); // Blue 50
+    doc.setDrawColor(191, 219, 254); // Blue 200
+    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 8, 1, 1, "FD");
+    
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 64, 175); // Blue 800
+    doc.text("TEMA DO DDS:", margin + 3, currentY + 5.2);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(15, 23, 42);
+    const splitDds = doc.splitTextToSize(temaDds.trim(), pageWidth - margin * 2 - 32);
+    doc.text(splitDds, margin + 28, currentY + 5.2);
+
+    currentY += 10.5;
+  }
 
   const validOcs = (ocorrencias || []).filter(
     oc => oc.eventoPrincipal?.trim() || oc.impactosDanos?.trim() || oc.acoesRealizadas?.trim() || oc.linhaDoTempo?.trim() || oc.condicaoRestricoes?.trim()

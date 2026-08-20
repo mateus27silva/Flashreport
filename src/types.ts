@@ -296,24 +296,28 @@ export const EXEMPLO_OCORRENCIA: OcorrenciaPerdaSeguranca = {
   condicaoRestricoes: `A rebritagem encontra-se em operação no modo by-pass. Devido à falha contínua do sensor do Silo 01 (posição 02), a operação está rodando sob controle manual: o nível no supervisório está sendo mantido abaixo de 40% para compensar a divergência de leitura e evitar um novo transbordo.`,
 };
 
-interface GerarWppParams {
+export interface GerarWppParams {
   data: string;
   turno: "diurno" | "noturno";
   turma: string;
   supervisor: string;
+  temaDds?: string;
   dados: Record<string, Record<string, any>>;
   acoes: string[];
   obs: string;
   ocorrenciasCriticas?: OcorrenciaPerdaSeguranca[];
 }
 
-export function gerarWpp({ data, turno, turma, supervisor, dados, acoes, obs, ocorrenciasCriticas }: GerarWppParams): string {
+export function gerarWpp({ data, turno, turma, supervisor, temaDds, dados, acoes, obs, ocorrenciasCriticas }: GerarWppParams): string {
   const tl = turno === "diurno" ? "☀️ Diurno (07h–19h)" : "🌙 Noturno (19h–07h)";
   const hr = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   const L: string[] = [];
   L.push(`🏭 *RELATÓRIO DE TURNO — PLANTA COBRE*`);
   L.push(`📅 ${fmtData(data)} | ${tl}`);
   L.push(`👥 Turma ${turma} | Supervisor: ${supervisor}`);
+  if (temaDds && temaDds.trim()) {
+    L.push(`🛡️ *Tema do DDS:* ${temaDds.trim()}`);
+  }
   L.push(`🕐 Gerado às ${hr}`);
   L.push(``);
 

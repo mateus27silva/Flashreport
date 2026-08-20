@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   AlertCircle,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
   Clipboard,
   CheckSquare,
@@ -85,6 +86,7 @@ export default function App() {
   const [senhaErro, setSenhaErro] = useState<boolean>(false);
   const [showSenha, setShowSenha] = useState<boolean>(false);
   const [idx, setIdx] = useState<number>(0);
+  const [temaDds, setTemaDds] = useState<string>("");
   const [dados, setDados] = useState<Record<string, Record<string, any>>>({});
   const [acoes, setAcoes] = useState<string[]>([""]);
   const [obs, setObs] = useState<string>("");
@@ -120,6 +122,7 @@ export default function App() {
         if (parsed.turno) setTurno(parsed.turno);
         if (parsed.turma) setTurma(parsed.turma);
         if (parsed.sup) setSup(parsed.sup);
+        if (parsed.temaDds) setTemaDds(parsed.temaDds);
         if (parsed.dados) setDados(parsed.dados);
         if (parsed.acoes) setAcoes(parsed.acoes);
         if (parsed.obs) setObs(parsed.obs);
@@ -135,10 +138,10 @@ export default function App() {
     if (tela !== "inicio") {
       localStorage.setItem(
         LRAFT_KEY,
-        JSON.stringify({ data, turno, turma, sup, dados, acoes, obs, ocorrencias })
+        JSON.stringify({ data, turno, turma, sup, temaDds, dados, acoes, obs, ocorrencias })
       );
     }
-  }, [data, turno, turma, sup, dados, acoes, obs, ocorrencias, tela]);
+  }, [data, turno, turma, sup, temaDds, dados, acoes, obs, ocorrencias, tela]);
 
   const setor = SETORES[idx];
   const c = COR[setor?.cor || "teal"];
@@ -396,6 +399,7 @@ export default function App() {
       setTurma(null);
       setSup("");
       setSenha("");
+      setTemaDds("");
       setIdx(0);
       setDados({});
       setAcoes([""]);
@@ -451,6 +455,7 @@ export default function App() {
       turno: turno || "diurno",
       turma: turma || "A",
       supervisor: sup,
+      temaDds,
       dados: syncedDados,
       acoes,
       obs,
@@ -525,6 +530,7 @@ export default function App() {
         data,
         turno: turno || "diurno",
         turma: turma || "A",
+        temaDds,
         dados: syncedDados,
         ocorrencias,
         acoes,
@@ -1277,6 +1283,30 @@ export default function App() {
                       <span className="text-[10px] uppercase font-bold text-red-800 tracking-wider">Críticos</span>
                       <span className="text-3xl font-black block mt-0.5 text-red-600">{counts.cr}</span>
                     </div>
+                  </div>
+
+                  {/* Tema do DDS (Diálogo Diário de Segurança) */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-blue-200/80 shadow-sm space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 shrink-0">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                          Tema do DDS
+                        </h3>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          Diálogo Diário de Segurança realizado no alinhamento do turno
+                        </p>
+                      </div>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Ex: Bloqueio e Etiquetagem (LOTO), Trabalho em Altura, Isolamento de Áreas..."
+                      value={temaDds}
+                      onChange={e => setTemaDds(e.target.value)}
+                      className="w-full bg-white border border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none transition font-medium placeholder:text-slate-400 shadow-2xs"
+                    />
                   </div>
 
                   {/* Ocorrências de Perda de Produção ou Segurança */}
