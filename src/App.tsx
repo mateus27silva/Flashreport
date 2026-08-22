@@ -16,6 +16,8 @@ import {
   Filter,
   FilterX,
   Layers,
+  RotateCw,
+  Wrench,
   Lock,
   X,
   Plus,
@@ -70,6 +72,8 @@ const IconComponent = ({ name, className }: { name: string; className?: string }
     case "Filter": return <Filter className={className} />;
     case "FilterX": return <FilterX className={className} />;
     case "Layers": return <Layers className={className} />;
+    case "RotateCw": return <RotateCw className={className} />;
+    case "Wrench": return <Wrench className={className} />;
     default: return <Hammer className={className} />;
   }
 };
@@ -574,7 +578,7 @@ export default function App() {
             }
             else return;
           }
-          const s2 = st(v, c.meta, c.id);
+          const s2 = st(v, c.meta, c.id, s.id);
           if (s2 === "ok") ok++;
           else if (s2 === "alerta") al++;
           else if (s2 === "critico") cr++;
@@ -1070,15 +1074,15 @@ export default function App() {
                               </span>
                             )}
                           </div>
-                          {campo.type === "number" && campo.meta !== undefined && val !== "" && (
+                          {campo.type === "number" && (campo.meta !== undefined || campo.id.startsWith("elevacao_rake") || campo.id.startsWith("solidos_45") || campo.id.startsWith("torque_ep")) && val !== "" && (
                             <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                              st(val, campo.meta, campo.id) === "ok"
+                              st(val, campo.meta, campo.id, setor.id) === "ok"
                                 ? "bg-emerald-50 text-emerald-800"
-                                : st(val, campo.meta, campo.id) === "alerta"
+                                : st(val, campo.meta, campo.id, setor.id) === "alerta"
                                 ? "bg-amber-50 text-amber-800"
                                 : "bg-red-50 text-red-800"
                             }`}>
-                              {st(val, campo.meta, campo.id).toUpperCase()}
+                              {st(val, campo.meta, campo.id, setor.id).toUpperCase()}
                             </span>
                           )}
                         </div>

@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { SETORES, OcorrenciaPerdaSeguranca, fmtData } from "../types";
+import { SETORES, OcorrenciaPerdaSeguranca, fmtData, st } from "../types";
 
 export interface PDFDataPayload {
   data: string;
@@ -294,16 +294,36 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         }
         
         let metaStr = campo.meta !== undefined ? `${campo.meta}${campo.un ? ` ${campo.un}` : ""}` : "-";
+        if (campo.id.startsWith("elevacao_rake")) metaStr = "< 7 Pol (Atenção 7-11 / Crítico > 11)";
+        else if (campo.id.startsWith("solidos_45") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("solidos_"))) metaStr = "63 - 66% (Crítico > 66%)";
+        else if (campo.id.startsWith("torque_ep") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("torque"))) metaStr = "< 12% (Atenção 12-20 / Crítico > 20)";
+        else if (setor.id === "remoagem" && campo.id === "produtividade") metaStr = "≤ 275 t/h (Crítico > 275)";
+        else if (campo.id === "nivel_tanque" || campo.id === "nivel_camara_a" || campo.id === "ciclos") metaStr = "-";
+
         let status = "-";
 
-        if (campo.meta !== undefined && val !== undefined && val !== "" && !isNaN(Number(val))) {
+        if (val !== undefined && val !== "" && !isNaN(Number(val))) {
           const numVal = Number(val);
-          if (campo.id === "paradas_manutencao" || campo.id === "paradas_outros") {
+          const sType = st(val, campo.meta, campo.id, setor.id);
+          
+          if (campo.id.startsWith("paradas")) {
             status = numVal === 0 ? "OK (0h)" : `${numVal}h Parada`;
-          } else if (numVal >= campo.meta) {
+          } else if (campo.id.startsWith("elevacao_rake")) {
+            status = sType === "ok" ? "OK (<7 Pol)" : sType === "alerta" ? "Atenção (7-11 Pol)" : "Crítico (>11 Pol)";
+          } else if (campo.id.startsWith("solidos_45") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("solidos_"))) {
+            status = sType === "ok" ? "OK (63-66%)" : sType === "alerta" ? "Atenção (<63%)" : "Crítico (>66%)";
+          } else if (campo.id.startsWith("torque_ep") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("torque"))) {
+            status = sType === "ok" ? "OK (<12%)" : sType === "alerta" ? "Atenção (12-20%)" : "Crítico (>20%)";
+          } else if (setor.id === "remoagem" && campo.id === "produtividade") {
+            status = sType === "ok" ? "OK (≤275 t/h)" : "Crítico (>275 t/h)";
+          } else if (sType === "ok") {
             status = "Atingida";
-          } else {
+          } else if (sType === "alerta") {
+            status = "Alerta";
+          } else if (sType === "critico") {
             status = "Abaixo Meta";
+          } else {
+            status = "Apurado";
           }
         } else if (val !== undefined && val !== "") {
           status = "Apurado";
@@ -333,9 +353,9 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
           textColor: [30, 41, 59],
         },
         columnStyles: {
-          0: { cellWidth: 70, fontStyle: "bold" },
-          1: { cellWidth: 40, fontStyle: "bold", halign: "center" },
-          2: { cellWidth: 35, halign: "center", textColor: [100, 116, 139] },
+          0: { cellWidth: 65, fontStyle: "bold" },
+          1: { cellWidth: 35, fontStyle: "bold", halign: "center" },
+          2: { cellWidth: 45, halign: "center", textColor: [100, 116, 139] },
           3: { cellWidth: "auto", halign: "center" },
         },
         didParseCell: (dataCell) => {
@@ -344,7 +364,10 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
             if (txt === "Atingida" || txt.startsWith("OK")) {
               dataCell.cell.styles.textColor = [16, 185, 129];
               dataCell.cell.styles.fontStyle = "bold";
-            } else if (txt === "Abaixo Meta" || txt.includes("Parada")) {
+            } else if (txt === "Alerta" || txt.startsWith("Atenção")) {
+              dataCell.cell.styles.textColor = [217, 119, 6];
+              dataCell.cell.styles.fontStyle = "bold";
+            } else if (txt === "Abaixo Meta" || txt.startsWith("Crítico") || txt.includes("Parada")) {
               dataCell.cell.styles.textColor = [220, 38, 38];
               dataCell.cell.styles.fontStyle = "bold";
             }

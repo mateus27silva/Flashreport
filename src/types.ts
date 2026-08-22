@@ -16,7 +16,7 @@ export interface Setor {
   id: string;
   label: string;
   icon: string;
-  cor: "teal" | "blue" | "amber" | "purple" | "coral" | "green" | "gray" | "pink";
+  cor: "teal" | "blue" | "amber" | "purple" | "coral" | "green" | "gray" | "pink" | "indigo" | "cyan";
   campos: Campo[];
 }
 
@@ -140,6 +140,28 @@ export const SETORES: Setor[] = [
     ],
   },
   {
+    id: "remoagem",
+    label: "Remoagem",
+    icon: "RotateCw",
+    cor: "indigo",
+    campos: [
+      { id: "produtividade", label: "Produtividade", type: "number", meta: 275, un: "t/h" },
+      { id: "densidade", label: "Densidade", type: "number", un: "g/t" },
+      { id: "torque", label: "Torque", type: "number", un: "%" },
+      { id: "granulometria_p80", label: "P80", type: "number", un: "microns" },
+      { id: "potencia_moinho", label: "Potência do moinho", type: "number", un: "kWh" },
+      { id: "peneiras_operacao", label: "Número de peneiras em operação", type: "number", un: "" },
+      { id: "decks_parados", label: "Número de decks parados", type: "number", un: "" },
+      { id: "disponibilidade", label: "Disponibilidade", type: "number", meta: 90, un: "%" },
+      { id: "utilizacao", label: "Utilização", type: "number", meta: 85, un: "%" },
+      { id: "paradas_manutencao", label: "Paradas de Manutenção", type: "number", meta: 0, un: "h" },
+      { id: "paradas_outros", label: "Paradas de Outros (OUT)", type: "number", meta: 0, un: "h" },
+      { id: "ocorrencias", label: "Ocorrências", type: "text" },
+      { id: "atividades", label: "Atividades realizadas", type: "atividades" },
+      { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+    ],
+  },
+  {
     id: "flotacao",
     label: "Flotação de Cobre",
     icon: "Droplets",
@@ -153,7 +175,7 @@ export const SETORES: Setor[] = [
       { id: "metal_contido", label: "Metal", type: "number", meta: 63.3, un: "t" },
       { id: "concentrado", label: "Concentrado", type: "number", meta: 189, un: "t" },
       { id: "ph_rougher", label: "pH Linha principal", type: "number", meta: 9.5, un: "" },
-      { id: "ph_segunda_linha", label: "pH Segunda linha", type: "number", meta: 9.5, un: "" },
+      { id: "ph_segunda_linha", label: "pH Segunda linha", type: "number", meta: 10.5, un: "" },
       { id: "consumo_coletor", label: "Coletor", type: "number", meta: 35, un: "g/t" },
       { id: "consumo_espumante", label: "Espumante", type: "number", meta: 25, un: "g/t" },
       { id: "consumo_dispersante", label: "Dispersante", type: "number", meta: 25, un: "g/t" },
@@ -174,10 +196,10 @@ export const SETORES: Setor[] = [
       { id: "densidade_underflow", label: "Dens. Underflow", type: "number", meta: 1850, un: "g/L" },
       { id: "solidos_44ep001", label: "Percentual de sólidos 44EP001", type: "number", meta: 65, un: "%" },
       { id: "solidos_44ep002", label: "Percentual de sólidos 44EP002", type: "number", meta: 65, un: "%" },
-      { id: "nivel_tanque", label: "Nível do Tanque", type: "number", meta: 60, un: "%" },
-      { id: "consumo_floculante", label: "Floculante", type: "number", meta: 25, un: "g/t" },
-      { id: "elevacao_rake_ep001", label: "Elevação do Rake 44EP001", type: "number", meta: 0, un: "mm" },
-      { id: "elevacao_rake_ep002", label: "Elevação do Rake 44EP002", type: "number", meta: 0, un: "mm" },
+      { id: "nivel_tanque", label: "Nível 44TQ001", type: "number", un: "%" },
+      { id: "consumo_floculante", label: "Floculante", type: "number", meta: 25, un: "mL/min" },
+      { id: "elevacao_rake_ep001", label: "Elevação do Rake 44EP001", type: "number", meta: 7, un: "Pol" },
+      { id: "elevacao_rake_ep002", label: "Elevação do Rake 44EP002", type: "number", meta: 7, un: "Pol" },
       { id: "corrente_ep001", label: "Corrente 44EP001", type: "number", meta: 15, un: "A" },
       { id: "corrente_ep002", label: "Corrente 44EP002", type: "number", meta: 15, un: "A" },
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
@@ -192,15 +214,15 @@ export const SETORES: Setor[] = [
     cor: "gray",
     campos: [
       { id: "espessador_operacao", label: "Espessador em operação", type: "select", opcoes: ["45EP001", "45EP002", "Ambos"] },
-      { id: "densidade_underflow", label: "Dens. Underflow", type: "number", meta: 1400, un: "g/L" },
-      { id: "solidos_45ep001", label: "Percentual de sólidos 45EP001", type: "number", meta: 55, un: "%" },
-      { id: "solidos_45ep002", label: "Percentual de sólidos 45EP002", type: "number", meta: 55, un: "%" },
-      { id: "solidos_45bh01", label: "Percentual de sólidos 45BH01", type: "number", meta: 55, un: "%" },
-      { id: "solidos_45bh02", label: "Percentual de sólidos 45BH02", type: "number", meta: 55, un: "%" },
-      { id: "solidos_45bh03", label: "Percentual de sólidos 45BH03", type: "number", meta: 55, un: "%" },
-      { id: "consumo_floculante", label: "Floculante", type: "number", meta: 18, un: "g/t" },
-      { id: "torque_ep001", label: "Torque 45EP001", type: "number", meta: 40, un: "%" },
-      { id: "torque_ep002", label: "Torque 45EP002", type: "number", meta: 40, un: "%" },
+      { id: "densidade_underflow", label: "Dens. Underflow", type: "number", meta: 1.7, un: "g/t" },
+      { id: "solidos_45ep001", label: "Percentual de sólidos 45EP001", type: "number", meta: 63, un: "%" },
+      { id: "solidos_45ep002", label: "Percentual de sólidos 45EP002", type: "number", meta: 63, un: "%" },
+      { id: "solidos_45bh01", label: "Percentual de sólidos 45BH01", type: "number", meta: 63, un: "%" },
+      { id: "solidos_45bh02", label: "Percentual de sólidos 45BH02", type: "number", meta: 63, un: "%" },
+      { id: "solidos_45bh03", label: "Percentual de sólidos 45BH03", type: "number", meta: 63, un: "%" },
+      { id: "consumo_floculante", label: "Floculante", type: "number", meta: 18, un: "mL/min" },
+      { id: "torque_ep001", label: "Torque 45EP001", type: "number", meta: 12, un: "%" },
+      { id: "torque_ep002", label: "Torque 45EP002", type: "number", meta: 12, un: "%" },
       { id: "htr_linha1", label: "HTR Linha 1", type: "number", un: "h" },
       { id: "htr_linha2", label: "HTR Linha 2", type: "number", un: "h" },
       { id: "htr_linha3", label: "HTR Linha 3", type: "number", un: "h" },
@@ -223,9 +245,31 @@ export const SETORES: Setor[] = [
       { id: "vazao_fim_compactacao", label: "Vazão ao final da compactação", type: "number", meta: 45, un: "m³/h" },
       { id: "pressao_fim_compactacao", label: "Pressão final da compactação", type: "number", meta: 230, un: "kPa" },
       { id: "setpoint_peso_torta", label: "Setpoint Peso da torta", type: "number", meta: 8000, un: "kg" },
-      { id: "ciclos", label: "Ciclos", type: "number", meta: 24, un: "" },
+      { id: "ciclos", label: "Ciclos", type: "number", un: "" },
       { id: "disponibilidade", label: "Disponibilidade", type: "number", meta: 90, un: "%" },
       { id: "utilizacao", label: "Utilização", type: "number", meta: 85, un: "%" },
+      { id: "paradas_manutencao", label: "Paradas de Manutenção", type: "number", meta: 0, un: "h" },
+      { id: "paradas_outros", label: "Paradas de Outros (OUT)", type: "number", meta: 0, un: "h" },
+      { id: "ocorrencias", label: "Ocorrências", type: "text" },
+      { id: "atividades", label: "Atividades realizadas", type: "atividades" },
+      { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+    ],
+  },
+  {
+    id: "utilidades",
+    label: "Utilidades",
+    icon: "Wrench",
+    cor: "cyan",
+    campos: [
+      { id: "pressao_ar", label: "Pressão Ar Comprimido", type: "number", meta: 7.0, un: "bar" },
+      { id: "eta_agua_recuperada", label: "ETA água recuperada", type: "number", meta: 75, un: "%" },
+      { id: "eta_agua_bruta", label: "ETA água bruta", type: "number", meta: 70, un: "%" },
+      { id: "nivel_camara_a", label: "Nível da câmara A", type: "number", un: "%" },
+      { id: "vazao_agua_nova", label: "Vazão Captação Água Nova", type: "number", un: "m³/h" },
+      { id: "compressores", label: "Compressores em Operação", type: "select", opcoes: ["Comp 01", "Comp 02", "Comp 03", "Comp 01 e 02", "Comp 01 e 03", "Comp 02 e 03", "Todos em Operação"] },
+      { id: "bombas_agua", label: "Bombas Água de Processo", type: "select", opcoes: ["Bomba 01", "Bomba 02", "Ambas em Operação"] },
+      { id: "disponibilidade", label: "Disponibilidade", type: "number", meta: 95, un: "%" },
+      { id: "utilizacao", label: "Utilização", type: "number", meta: 90, un: "%" },
       { id: "paradas_manutencao", label: "Paradas de Manutenção", type: "number", meta: 0, un: "h" },
       { id: "paradas_outros", label: "Paradas de Outros (OUT)", type: "number", meta: 0, un: "h" },
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
@@ -244,16 +288,53 @@ export const COR = {
   green:  { bg: "bg-[#EAF3DE]", bd: "border-[#3B6D11]", tx: "text-[#27500A]", hover: "hover:bg-[#dfedce]", textNormal: "#27500A", primary: "#3B6D11" },
   gray:   { bg: "bg-[#F1EFE8]", bd: "border-[#5F5E5A]", tx: "text-[#444441]", hover: "hover:bg-[#e8e4db]", textNormal: "#444441", primary: "#5F5E5A" },
   pink:   { bg: "bg-[#FBEAF0]", bd: "border-[#993556]", tx: "text-[#72243E]", hover: "hover:bg-[#f9d8e5]", textNormal: "#72243E", primary: "#993556" },
+  indigo: { bg: "bg-[#EEF2FF]", bd: "border-[#4338CA]", tx: "text-[#312E81]", hover: "hover:bg-[#e0e7ff]", textNormal: "#312E81", primary: "#4338CA" },
+  cyan:   { bg: "bg-[#ECFEFF]", bd: "border-[#0891B2]", tx: "text-[#155E75]", hover: "hover:bg-[#cffafe]", textNormal: "#155E75", primary: "#0891B2" },
 };
 
-export function st(val: string | number, meta: number | undefined, id: string): StatusType {
-  if (val === "" || val === undefined || val === null || meta === undefined) return "nd";
+export function st(val: string | number, meta: number | undefined, id: string, setorId?: string): StatusType {
+  if (val === "" || val === undefined || val === null) return "nd";
   const v = parseFloat(val as string);
-  const m = parseFloat(meta as any);
   if (isNaN(v)) return "nd";
-  if (id === "paradas" || id === "paradas_manutencao" || id === "paradas_outros" || id.startsWith("elevacao_rake")) {
-    return v === 0 ? "ok" : v <= 50 ? "alerta" : "critico";
+
+  // Paradas de Manutenção e Outras
+  if (id === "paradas" || id === "paradas_manutencao" || id === "paradas_outros") {
+    return v === 0 ? "ok" : v <= 2 ? "alerta" : "critico";
   }
+
+  // Elevação do Rake (Espessadores de Concentrado)
+  // Acima de 11" é crítico, entre 11 e 7 é atenção e abaixo ok (< 7)
+  if (id.startsWith("elevacao_rake")) {
+    if (v > 11) return "critico";
+    if (v >= 7) return "alerta";
+    return "ok";
+  }
+
+  // Percentual de sólidos dos espessadores de rejeito
+  // Acima de 66% crítico, entre 66% e 63% é ok, e abaixo de 63% atenção
+  if (id.startsWith("solidos_45") || (setorId === "espessamento_rejeito" && id.startsWith("solidos_"))) {
+    if (v > 66) return "critico";
+    if (v >= 63) return "ok";
+    return "alerta";
+  }
+
+  // Produtividade Remoagem: até 275tph OK, acima disso Crítico
+  if (setorId === "remoagem" && (id === "produtividade" || id === "alimentacao")) {
+    return v <= 275 ? "ok" : "critico";
+  }
+
+  // Torque dos espessadores de rejeito
+  // Acima de 20% é crítico, entre 20% e 12% é atenção e abaixo é ok (< 12)
+  if (id.startsWith("torque_ep") || (setorId === "espessamento_rejeito" && id.startsWith("torque"))) {
+    if (v > 20) return "critico";
+    if (v >= 12) return "alerta";
+    return "ok";
+  }
+
+  if (meta === undefined) return "nd";
+  const m = parseFloat(meta as any);
+  if (isNaN(m) || m === 0) return "nd";
+
   const p = (v / m) * 100;
   return p >= 95 ? "ok" : p >= 80 ? "alerta" : "critico";
 }
@@ -332,7 +413,7 @@ export function gerarWpp({ data, turno, turma, supervisor, temaDds, dados, acoes
     s.campos
       .filter(c => c.type === "number" && d[c.id] !== "" && d[c.id] !== undefined)
       .forEach(c => {
-        const s2 = st(d[c.id], c.meta, c.id);
+        const s2 = st(d[c.id], c.meta, c.id, s.id);
         if (s2 === "ok") ok++;
         else if (s2 === "alerta") al++;
         else if (s2 === "critico") cr++;
@@ -350,8 +431,14 @@ export function gerarWpp({ data, turno, turma, supervisor, temaDds, dados, acoes
     s.campos
       .filter(c => c.type === "number")
       .forEach(c => {
-        if (st(d[c.id], c.meta, c.id) === "critico") {
-          crits.push(`  • ${s.label} › ${c.label}: *${d[c.id]} ${c.un}* (meta ${c.meta})`);
+        if (st(d[c.id], c.meta, c.id, s.id) === "critico") {
+          let refStr = c.meta !== undefined ? `meta ${c.meta}` : "";
+          if (c.id.startsWith("elevacao_rake")) refStr = "crítico > 11 Pol";
+          else if (c.id.startsWith("solidos_45") || (s.id === "espessamento_rejeito" && c.id.startsWith("solidos_"))) refStr = "crítico > 66%";
+          else if (c.id.startsWith("torque_ep") || (s.id === "espessamento_rejeito" && c.id.startsWith("torque"))) refStr = "crítico > 20%";
+          else if (s.id === "remoagem" && (c.id === "produtividade" || c.id === "alimentacao")) refStr = "crítico > 275 t/h";
+
+          crits.push(`  • ${s.label} › ${c.label}: *${d[c.id]} ${c.un || ""}*${refStr ? ` (${refStr})` : ""}`);
         }
       });
   });
@@ -456,8 +543,14 @@ export function gerarWpp({ data, turno, turma, supervisor, temaDds, dados, acoes
         itens.forEach((it, i) => L.push(`   ${i + 1}. ${it}`));
         return;
       }
-      const s2 = st(d[c.id], c.meta, c.id);
-      const metaS = c.meta !== undefined ? ` (meta ${c.meta})` : "";
+      const s2 = st(d[c.id], c.meta, c.id, s.id);
+      let metaS = c.meta !== undefined ? ` (meta ${c.meta})` : "";
+      if (c.id.startsWith("elevacao_rake")) metaS = " (ref <7 Pol)";
+      else if (c.id.startsWith("solidos_45") || (s.id === "espessamento_rejeito" && c.id.startsWith("solidos_"))) metaS = " (meta 63-66%)";
+      else if (c.id.startsWith("torque_ep") || (s.id === "espessamento_rejeito" && c.id.startsWith("torque"))) metaS = " (meta <12%)";
+      else if (s.id === "remoagem" && (c.id === "produtividade" || c.id === "alimentacao")) metaS = " (meta ≤ 275 t/h)";
+      else if (c.id === "nivel_tanque" || c.id === "nivel_camara_a") metaS = "";
+
       L.push(`${ST[s2].em} ${c.label}: *${d[c.id]}${c.un ? " " + c.un : ""}*${metaS}`);
     });
     L.push(``);
