@@ -13,6 +13,34 @@ export interface PDFDataPayload {
   obs: string;
 }
 
+/**
+ * Sanitizes strings for jsPDF built-in fonts (Helvetica / WinAnsi).
+ * Converts Unicode symbols, bullets, smart quotes, dashes, non-breaking spaces,
+ * and emojis into 100% clean ASCII / Latin-1 text to prevent encoding glitches,
+ * corrupted character sequences like '%æ', and letter-spacing expansion bugs.
+ */
+export function sanitizePdfText(str: any): string {
+  if (str === undefined || str === null) return "";
+  let s = String(str);
+
+  // Normalize Unicode bullets, arrows, list symbols to clean standard markers
+  s = s
+    .replace(/[\u2022\u2023\u25E6\u2043\u2219\u25CB\u25CF\u25AA\u25AB\u25A0\u25A1\u25B6\u25B8\u25BA\u27A4\u279C\u2794\u2192]/g, "- ")
+    .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u2013\u2014\u2015]/g, "-")
+    .replace(/\u2026/g, "...")
+    .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, " ") // Non-breaking & special whitespace
+    .replace(/[\u2705\u2713\u2714]/g, "[OK]")
+    .replace(/[\u274C\u274E\u2716\u2717\u2718]/g, "[X]")
+    .replace(/[\u26A0\u26A1\u2699\u2692\uD800-\uDFFF]/g, ""); // Emojis and surrogate pairs
+
+  // Replace any other unsupported high-unicode characters (> 255)
+  s = s.replace(/[^\x00-\xFF]/g, " ");
+
+  return s;
+}
+
 export function gerarRelatorioPDF(payload: PDFDataPayload) {
   const { data, turno, turma, temaDds, dados, ocorrencias, acoes, obs } = payload;
   const doc = new jsPDF({
@@ -24,6 +52,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 14;
+  const contentWidth = pageWidth - margin * 2;
   let currentY = margin;
 
   // Theme Colors
@@ -44,8 +73,8 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   const drawSectionHeader = (title: string) => {
     checkPageBreak(14);
     doc.setFillColor(...headerBg);
-    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 7.5, 1, 1, "F");
-    
+    doc.roundedRect(margin, currentY, contentWidth, 7.5, 1, 1, "F");
+
     // Teal small left marker
     doc.setFillColor(...primaryColor);
     doc.rect(margin, currentY, 2.5, 7.5, "F");
@@ -53,13 +82,13 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
-    doc.text(title, margin + 5, currentY + 5.2);
+    doc.text(sanitizePdfText(title), margin + 5, currentY + 5.2);
     currentY += 10.5;
   };
 
   // --- 1. HEADER BANNER ---
   doc.setFillColor(...headerBg);
-  doc.rect(margin, currentY, pageWidth - margin * 2, 22, "F");
+  doc.rect(margin, currentY, contentWidth, 22, "F");
 
   // Accent stripe
   doc.setFillColor(...primaryColor);
@@ -85,17 +114,17 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   doc.text("TURMA", pageWidth - margin - 22, currentY + 9);
   doc.setFontSize(11);
   doc.setTextColor(52, 211, 153); // Emerald 400
-  doc.text(turma ? `TURMA ${turma}` : "-", pageWidth - margin - 24, currentY + 15);
+  doc.text(turma ? `TURMA ${sanitizePdfText(turma)}` : "-", pageWidth - margin - 24, currentY + 15);
 
   currentY += 25;
 
   // --- 2. METADATA STRIP ---
   doc.setFillColor(248, 250, 252); // Slate 50
-  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 13, 1.5, 1.5, "F");
+  doc.roundedRect(margin, currentY, contentWidth, 13, 1.5, 1.5, "F");
   doc.setDrawColor(226, 232, 240); // Slate 200
-  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 13, 1.5, 1.5, "S");
+  doc.roundedRect(margin, currentY, contentWidth, 13, 1.5, 1.5, "S");
 
-  const colWidth = (pageWidth - margin * 2) / 3;
+  const colWidth = contentWidth / 3;
 
   // Data
   doc.setFontSize(7.5);
@@ -107,7 +136,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   doc.setTextColor(...textDark);
   doc.text(fmtData(data) || "-", margin + 4, currentY + 9.8);
 
-  // Turno (No emojis to ensure 100% clean font rendering across all PDF engines)
+  // Turno
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...textMuted);
@@ -137,21 +166,26 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
 
   // Tema do DDS (se preenchido)
   if (temaDds && temaDds.trim()) {
+    const cleanDds = sanitizePdfText(temaDds.trim());
     doc.setFillColor(239, 246, 255); // Blue 50
     doc.setDrawColor(191, 219, 254); // Blue 200
-    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 7.5, 1, 1, "FD");
 
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
+    const splitDds = doc.splitTextToSize(cleanDds, contentWidth - 34);
+    const ddsHeight = Math.max(7.5, splitDds.length * 3.4 + 4);
+
+    doc.roundedRect(margin, currentY, contentWidth, ddsHeight, 1, 1, "FD");
+
     doc.setFont("helvetica", "bold");
     doc.setTextColor(30, 64, 175); // Blue 800
     doc.text("TEMA DO DDS:", margin + 3, currentY + 4.8);
 
     doc.setFont("helvetica", "normal");
     doc.setTextColor(15, 23, 42);
-    const splitDds = doc.splitTextToSize(temaDds.trim(), pageWidth - margin * 2 - 32);
     doc.text(splitDds, margin + 28, currentY + 4.8);
 
-    currentY += 9.5;
+    currentY += ddsHeight + 2.5;
   }
 
   const validOcs = (ocorrencias || []).filter(
@@ -161,7 +195,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   if (validOcs.length === 0) {
     doc.setFillColor(240, 253, 244); // Emerald 50
     doc.setDrawColor(187, 247, 208); // Emerald 200
-    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 8.5, 1.5, 1.5, "FD");
+    doc.roundedRect(margin, currentY, contentWidth, 8.5, 1.5, 1.5, "FD");
 
     // Left green accent
     doc.setFillColor(16, 185, 129); // Emerald 500
@@ -174,74 +208,66 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
     currentY += 12;
   } else {
     validOcs.forEach((oc, i) => {
-      checkPageBreak(35);
+      // Clean and sanitize all occurrence fields
+      const evento = sanitizePdfText(oc.eventoPrincipal || "Ocorrência Crítica Registrada");
+      const impactos = sanitizePdfText(oc.impactosDanos || "");
+      const acoesReal = sanitizePdfText(oc.acoesRealizadas || "");
+      const timeline = sanitizePdfText(oc.linhaDoTempo || "");
+      const condicoes = sanitizePdfText(oc.condicaoRestricoes || "");
+
+      // Pre-calculate heights to handle page breaks smoothly
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "normal");
+      const textWrapWidth = contentWidth - 10;
+
+      const splitEvento = doc.splitTextToSize(`[OCORRÊNCIA #${i + 1}] ${evento}`, textWrapWidth);
+      const splitImpactos = impactos ? doc.splitTextToSize(impactos, textWrapWidth - 4) : [];
+      const splitAcoes = acoesReal ? doc.splitTextToSize(acoesReal, textWrapWidth - 4) : [];
+      const splitTimeline = timeline ? doc.splitTextToSize(timeline, textWrapWidth - 4) : [];
+      const splitCondicoes = condicoes ? doc.splitTextToSize(condicoes, textWrapWidth - 4) : [];
+
+      let totalOcHeight = 6 + splitEvento.length * 3.6;
+      if (splitImpactos.length > 0) totalOcHeight += 4 + splitImpactos.length * 3.4 + 2;
+      if (splitAcoes.length > 0) totalOcHeight += 4 + splitAcoes.length * 3.4 + 2;
+      if (splitTimeline.length > 0) totalOcHeight += 4 + splitTimeline.length * 3.4 + 2;
+      if (splitCondicoes.length > 0) totalOcHeight += 4 + splitCondicoes.length * 3.4 + 2;
+      totalOcHeight += 2;
+
+      checkPageBreak(Math.min(totalOcHeight, 50));
+
+      const ocStartY = currentY;
       doc.setFillColor(254, 242, 242); // Red 50
       doc.setDrawColor(254, 202, 202); // Red 200
 
-      const ocStartY = currentY;
+      // Title
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(185, 28, 28); // Red 700
-      doc.text(`[OCORRÊNCIA #${i + 1}] ${oc.eventoPrincipal || "Ocorrência Crítica Registrada"}`, margin + 3, currentY + 4);
-      currentY += 6.5;
+      doc.text(splitEvento, margin + 4, currentY + 4.5);
+      currentY += 4.5 + splitEvento.length * 3.6;
 
-      if (oc.impactosDanos?.trim()) {
+      const renderOcSection = (title: string, lines: string[]) => {
+        if (lines.length === 0) return;
+        checkPageBreak(lines.length * 3.4 + 6);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(7.5);
         doc.setTextColor(153, 27, 27);
-        doc.text("• Impactos e Danos:", margin + 4, currentY);
-        currentY += 3.5;
+        doc.text(title, margin + 4, currentY);
+        currentY += 3.4;
+
         doc.setFont("helvetica", "normal");
         doc.setTextColor(51, 65, 85);
-        const splitText = doc.splitTextToSize(oc.impactosDanos.trim(), pageWidth - margin * 2 - 8);
-        doc.text(splitText, margin + 6, currentY);
-        currentY += splitText.length * 3.5 + 2;
-      }
+        doc.text(lines, margin + 6, currentY);
+        currentY += lines.length * 3.4 + 2;
+      };
 
-      if (oc.acoesRealizadas?.trim()) {
-        checkPageBreak(15);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7.5);
-        doc.setTextColor(153, 27, 27);
-        doc.text("• Ações Realizadas:", margin + 4, currentY);
-        currentY += 3.5;
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(51, 65, 85);
-        const splitText = doc.splitTextToSize(oc.acoesRealizadas.trim(), pageWidth - margin * 2 - 8);
-        doc.text(splitText, margin + 6, currentY);
-        currentY += splitText.length * 3.5 + 2;
-      }
+      renderOcSection("• Impactos e Danos:", splitImpactos);
+      renderOcSection("• Ações Realizadas:", splitAcoes);
+      renderOcSection("• Linha do Tempo:", splitTimeline);
+      renderOcSection("• Condição Operacional e Restrições Atuais:", splitCondicoes);
 
-      if (oc.linhaDoTempo?.trim()) {
-        checkPageBreak(15);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7.5);
-        doc.setTextColor(153, 27, 27);
-        doc.text("• Linha do Tempo:", margin + 4, currentY);
-        currentY += 3.5;
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(51, 65, 85);
-        const splitText = doc.splitTextToSize(oc.linhaDoTempo.trim(), pageWidth - margin * 2 - 8);
-        doc.text(splitText, margin + 6, currentY);
-        currentY += splitText.length * 3.5 + 2;
-      }
-
-      if (oc.condicaoRestricoes?.trim()) {
-        checkPageBreak(15);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7.5);
-        doc.setTextColor(153, 27, 27);
-        doc.text("• Condição Operacional e Restrições Atuais:", margin + 4, currentY);
-        currentY += 3.5;
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(51, 65, 85);
-        const splitText = doc.splitTextToSize(oc.condicaoRestricoes.trim(), pageWidth - margin * 2 - 8);
-        doc.text(splitText, margin + 6, currentY);
-        currentY += splitText.length * 3.5 + 2;
-      }
-
-      const boxHeight = currentY - ocStartY + 1;
-      doc.roundedRect(margin, ocStartY, pageWidth - margin * 2, boxHeight, 1, 1, "S");
+      const actualBoxHeight = Math.max(12, currentY - ocStartY + 1);
+      doc.roundedRect(margin, ocStartY, contentWidth, actualBoxHeight, 1, 1, "S");
       currentY += 4;
     });
   }
@@ -259,7 +285,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
     // Sector Banner Header
     doc.setFillColor(241, 245, 249); // Slate 100
     doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, currentY, pageWidth - margin * 2, 6, "FD");
+    doc.rect(margin, currentY, contentWidth, 6, "FD");
 
     doc.setFillColor(...primaryColor);
     doc.rect(margin, currentY, 3, 6, "F");
@@ -267,7 +293,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
     doc.setTextColor(15, 23, 42);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    doc.text(`${setorNumber}. ${setor.label.toUpperCase()}`, margin + 5, currentY + 4.2);
+    doc.text(`${setorNumber}. ${sanitizePdfText(setor.label).toUpperCase()}`, margin + 5, currentY + 4.2);
 
     currentY += 7.5;
 
@@ -282,15 +308,19 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
 
       if (campo.type === "atividades") {
         if (Array.isArray(val)) {
-          atividadesList = val.filter(x => typeof x === "string" && x.trim().length > 0);
+          atividadesList = val
+            .filter(x => typeof x === "string" && x.trim().length > 0)
+            .map(x => sanitizePdfText(x));
         }
       } else if (campo.type === "pendencias") {
         if (Array.isArray(val)) {
-          pendenciasList = val.filter(x => typeof x === "string" && x.trim().length > 0);
+          pendenciasList = val
+            .filter(x => typeof x === "string" && x.trim().length > 0)
+            .map(x => sanitizePdfText(x));
         }
       } else if (campo.id === "ocorrencias") {
         if (typeof val === "string" && val.trim().length > 0) {
-          ocorrenciaText = val.trim();
+          ocorrenciaText = sanitizePdfText(val.trim());
         }
       } else {
         // Regular number, text, or select
@@ -335,7 +365,12 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
           status = "Apurado";
         }
 
-        paramRows.push([campo.label, displayVal, metaStr, status]);
+        paramRows.push([
+          sanitizePdfText(campo.label),
+          sanitizePdfText(displayVal),
+          sanitizePdfText(metaStr),
+          sanitizePdfText(status),
+        ]);
       }
     });
 
@@ -401,13 +436,13 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         doc.setFont("helvetica", "normal");
         doc.setTextColor(21, 128, 61);
         doc.setFontSize(7.5);
-        const splitText = doc.splitTextToSize(`• ${atv}`, pageWidth - margin * 2 - 8);
+        const splitText = doc.splitTextToSize(`• ${atv}`, contentWidth - 8);
         doc.text(splitText, margin + 4, currentY);
         currentY += splitText.length * 3.4;
       });
 
       const atvBoxHeight = currentY - atvStartY + 1.5;
-      doc.roundedRect(margin, atvStartY, pageWidth - margin * 2, atvBoxHeight, 1, 1, "S");
+      doc.roundedRect(margin, atvStartY, contentWidth, atvBoxHeight, 1, 1, "S");
       currentY += 3;
     }
 
@@ -428,13 +463,13 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         doc.setFont("helvetica", "normal");
         doc.setTextColor(194, 65, 12);
         doc.setFontSize(7.5);
-        const splitText = doc.splitTextToSize(`• ${pend}`, pageWidth - margin * 2 - 8);
+        const splitText = doc.splitTextToSize(`• ${pend}`, contentWidth - 8);
         doc.text(splitText, margin + 4, currentY);
         currentY += splitText.length * 3.4;
       });
 
       const pendBoxHeight = currentY - pendStartY + 1.5;
-      doc.roundedRect(margin, pendStartY, pageWidth - margin * 2, pendBoxHeight, 1, 1, "S");
+      doc.roundedRect(margin, pendStartY, contentWidth, pendBoxHeight, 1, 1, "S");
       currentY += 3;
     }
 
@@ -447,7 +482,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
       doc.text("Observações do Setor:", margin + 2, currentY + 3);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(51, 65, 85);
-      const splitText = doc.splitTextToSize(ocorrenciaText, pageWidth - margin * 2 - 4);
+      const splitText = doc.splitTextToSize(ocorrenciaText, contentWidth - 4);
       doc.text(splitText, margin + 2, currentY + 6.5);
       currentY += 7.5 + splitText.length * 3.4;
     }
@@ -456,7 +491,10 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   });
 
   // --- SEÇÃO 3: AÇÕES OPERATIVAS PARA O PRÓXIMO TURNO ---
-  const acoesValidas = (acoes || []).filter(a => a && a.trim().length > 0);
+  const acoesValidas = (acoes || [])
+    .filter(a => a && a.trim().length > 0)
+    .map(a => sanitizePdfText(a.trim()));
+
   if (acoesValidas.length > 0) {
     drawSectionHeader("3. AÇÕES OPERATIVAS PARA O PRÓXIMO TURNO");
 
@@ -465,9 +503,9 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
 
-      const splitText = doc.splitTextToSize(acao, pageWidth - margin * 2 - 24);
+      const splitText = doc.splitTextToSize(acao, contentWidth - 24);
       const rowHeight = Math.max(7, splitText.length * 3.5 + 3);
-      doc.roundedRect(margin, currentY, pageWidth - margin * 2, rowHeight, 1, 1, "FD");
+      doc.roundedRect(margin, currentY, contentWidth, rowHeight, 1, 1, "FD");
 
       doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
@@ -491,10 +529,11 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
 
-    const splitObs = doc.splitTextToSize(obs.trim(), pageWidth - margin * 2 - 8);
+    const cleanObs = sanitizePdfText(obs.trim());
+    const splitObs = doc.splitTextToSize(cleanObs, contentWidth - 8);
     const boxH = Math.max(10, splitObs.length * 3.6 + 5);
 
-    doc.roundedRect(margin, currentY, pageWidth - margin * 2, boxH, 1, 1, "FD");
+    doc.roundedRect(margin, currentY, contentWidth, boxH, 1, 1, "FD");
     doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(30, 41, 59);
@@ -511,7 +550,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
     // Top subtle bar on subsequent pages
     if (i > 1) {
       doc.setFillColor(241, 245, 249);
-      doc.rect(margin, 6, pageWidth - margin * 2, 5, "F");
+      doc.rect(margin, 6, contentWidth, 5, "F");
       doc.setFontSize(6.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(100, 116, 139);
