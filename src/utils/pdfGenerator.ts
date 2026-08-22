@@ -26,122 +26,132 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   const margin = 14;
   let currentY = margin;
 
-  // Colors
+  // Theme Colors
   const primaryColor: [number, number, number] = [13, 148, 136]; // #0d9488 (Teal)
   const headerBg: [number, number, number] = [15, 23, 42]; // #0f172a (Slate 900)
+  const textDark: [number, number, number] = [15, 23, 42]; // Slate 900
+  const textMuted: [number, number, number] = [71, 85, 105]; // Slate 600
 
-  // Helper for adding new page with header/footer
+  // Helper for adding new page with proper top margin
   const checkPageBreak = (neededHeight: number) => {
-    if (currentY + neededHeight > pageHeight - 18) {
+    if (currentY + neededHeight > pageHeight - 16) {
       doc.addPage();
-      currentY = margin + 4;
+      currentY = margin + 6;
     }
   };
 
-  // --- HEADER BANNER ---
+  // Helper to draw section header bar
+  const drawSectionHeader = (title: string) => {
+    checkPageBreak(14);
+    doc.setFillColor(...headerBg);
+    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 7.5, 1, 1, "F");
+    
+    // Teal small left marker
+    doc.setFillColor(...primaryColor);
+    doc.rect(margin, currentY, 2.5, 7.5, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.text(title, margin + 5, currentY + 5.2);
+    currentY += 10.5;
+  };
+
+  // --- 1. HEADER BANNER ---
   doc.setFillColor(...headerBg);
-  doc.rect(margin, currentY, pageWidth - margin * 2, 24, "F");
+  doc.rect(margin, currentY, pageWidth - margin * 2, 22, "F");
 
   // Accent stripe
   doc.setFillColor(...primaryColor);
-  doc.rect(margin, currentY, 4, 24, "F");
+  doc.rect(margin, currentY, 3.5, 22, "F");
 
   // Title text
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(13.5);
-  doc.text("PLANTA DE BENEFICIAMENTO DE COBRE", margin + 8, currentY + 9);
+  doc.setFontSize(13);
+  doc.text("PLANTA DE BENEFICIAMENTO DE COBRE", margin + 7, currentY + 8.5);
 
-  doc.setFontSize(9.5);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(203, 213, 225); // Slate 300
-  doc.text("RELATÓRIO OPERACIONAL DE PASSAGEM DE TURNO", margin + 8, currentY + 16);
+  doc.text("RELATÓRIO OPERACIONAL DE PASSAGEM DE TURNO", margin + 7, currentY + 15.5);
 
   // Turma badge on header
   doc.setFillColor(30, 41, 59);
-  doc.roundedRect(pageWidth - margin - 26, currentY + 5, 22, 14, 2, 2, "F");
-  doc.setTextColor(255, 255, 255);
+  doc.roundedRect(pageWidth - margin - 26, currentY + 4, 22, 14, 1.5, 1.5, "F");
+  doc.setTextColor(148, 163, 184); // Slate 400
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("TURMA", pageWidth - margin - 22, currentY + 10);
+  doc.setFontSize(7.5);
+  doc.text("TURMA", pageWidth - margin - 22, currentY + 9);
   doc.setFontSize(11);
   doc.setTextColor(52, 211, 153); // Emerald 400
-  doc.text(turma || "-", pageWidth - margin - 17, currentY + 16);
+  doc.text(turma ? `TURMA ${turma}` : "-", pageWidth - margin - 24, currentY + 15);
 
-  currentY += 28;
+  currentY += 25;
 
-  // --- METADATA STRIP ---
-  doc.setFillColor(241, 245, 249); // Slate 100
-  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 14, 2, 2, "F");
+  // --- 2. METADATA STRIP ---
+  doc.setFillColor(248, 250, 252); // Slate 50
+  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 13, 1.5, 1.5, "F");
   doc.setDrawColor(226, 232, 240); // Slate 200
-  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 14, 2, 2, "S");
+  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 13, 1.5, 1.5, "S");
 
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105); // Slate 600
-  
   const colWidth = (pageWidth - margin * 2) / 3;
-  
+
   // Data
-  doc.text("DATA DO TURNO", margin + 4, currentY + 5.5);
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(15, 23, 42);
-  doc.text(fmtData(data) || "-", margin + 4, currentY + 10.5);
+  doc.setTextColor(...textMuted);
+  doc.text("DATA DO TURNO", margin + 4, currentY + 4.8);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(...textDark);
+  doc.text(fmtData(data) || "-", margin + 4, currentY + 9.8);
 
-  // Turno
-  doc.setFontSize(8);
+  // Turno (No emojis to ensure 100% clean font rendering across all PDF engines)
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("TURNO OPERACIONAL", margin + colWidth + 4, currentY + 5.5);
+  doc.setTextColor(...textMuted);
+  doc.text("TURNO OPERACIONAL", margin + colWidth + 4, currentY + 4.8);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(15, 23, 42);
-  const turnoLabel = turno === "diurno" ? "☀️ Diurno (07h - 19h)" : "🌙 Noturno (19h - 07h)";
-  doc.text(turnoLabel, margin + colWidth + 4, currentY + 10.5);
+  doc.setFontSize(8.5);
+  doc.setTextColor(...textDark);
+  const turnoLabel = turno === "diurno" ? "Diurno (07:00 - 19:00)" : "Noturno (19:00 - 07:00)";
+  doc.text(turnoLabel, margin + colWidth + 4, currentY + 9.8);
 
-  // Gerado em
+  // Emissão
   const now = new Date();
   const emissoStr = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()} às ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("EMISSÃO DO RELATÓRIO", margin + colWidth * 2 + 4, currentY + 5.5);
+  doc.setTextColor(...textMuted);
+  doc.text("EMISSÃO DO RELATÓRIO", margin + colWidth * 2 + 4, currentY + 4.8);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.setTextColor(15, 23, 42);
-  doc.text(emissoStr, margin + colWidth * 2 + 4, currentY + 10.5);
+  doc.setFontSize(8);
+  doc.setTextColor(...textDark);
+  doc.text(emissoStr, margin + colWidth * 2 + 4, currentY + 9.8);
 
-  currentY += 18;
+  currentY += 16.5;
 
   // --- SEÇÃO 1: SEGURANÇA E MEIO AMBIENTE ---
-  checkPageBreak(30);
-  doc.setFillColor(...headerBg);
-  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 7, 1, 1, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("1. SEGURANÇA, MEIO AMBIENTE E DDS", margin + 3, currentY + 4.8);
-
-  currentY += 9;
+  drawSectionHeader("1. SEGURANÇA, MEIO AMBIENTE E DDS");
 
   // Tema do DDS (se preenchido)
   if (temaDds && temaDds.trim()) {
     doc.setFillColor(239, 246, 255); // Blue 50
     doc.setDrawColor(191, 219, 254); // Blue 200
-    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 8, 1, 1, "FD");
-    
-    doc.setFontSize(8);
+    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 7.5, 1, 1, "FD");
+
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(30, 64, 175); // Blue 800
-    doc.text("TEMA DO DDS:", margin + 3, currentY + 5.2);
+    doc.text("TEMA DO DDS:", margin + 3, currentY + 4.8);
 
     doc.setFont("helvetica", "normal");
     doc.setTextColor(15, 23, 42);
     const splitDds = doc.splitTextToSize(temaDds.trim(), pageWidth - margin * 2 - 32);
-    doc.text(splitDds, margin + 28, currentY + 5.2);
+    doc.text(splitDds, margin + 28, currentY + 4.8);
 
-    currentY += 10.5;
+    currentY += 9.5;
   }
 
   const validOcs = (ocorrencias || []).filter(
@@ -149,33 +159,38 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   );
 
   if (validOcs.length === 0) {
-    doc.setFillColor(236, 253, 245); // Emerald 50
-    doc.setDrawColor(167, 243, 208); // Emerald 200
-    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 10, 2, 2, "FD");
+    doc.setFillColor(240, 253, 244); // Emerald 50
+    doc.setDrawColor(187, 247, 208); // Emerald 200
+    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 8.5, 1.5, 1.5, "FD");
+
+    // Left green accent
+    doc.setFillColor(16, 185, 129); // Emerald 500
+    doc.rect(margin, currentY, 2.5, 8.5, "F");
+
     doc.setTextColor(6, 95, 70); // Emerald 800
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.text("✅ Turno Concluído Sem Ocorrências de Segurança, Quase-Acidentes ou Perdas de Processo.", margin + 4, currentY + 6.5);
-    currentY += 14;
+    doc.setFontSize(8);
+    doc.text("[STATUS OK] Turno Concluído Sem Ocorrências de Segurança, Quase-Acidentes ou Perdas de Processo.", margin + 5, currentY + 5.4);
+    currentY += 12;
   } else {
     validOcs.forEach((oc, i) => {
       checkPageBreak(35);
       doc.setFillColor(254, 242, 242); // Red 50
       doc.setDrawColor(254, 202, 202); // Red 200
-      
+
       const ocStartY = currentY;
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(185, 28, 28); // Red 700
-      doc.text(`🚨 OCORRÊNCIA #${i + 1}: ${oc.eventoPrincipal || "Ocorrência Crítica Registrada"}`, margin + 3, currentY + 4);
-      currentY += 7;
+      doc.text(`[OCORRÊNCIA #${i + 1}] ${oc.eventoPrincipal || "Ocorrência Crítica Registrada"}`, margin + 3, currentY + 4);
+      currentY += 6.5;
 
       if (oc.impactosDanos?.trim()) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(7.5);
         doc.setTextColor(153, 27, 27);
         doc.text("• Impactos e Danos:", margin + 4, currentY);
-        currentY += 3.8;
+        currentY += 3.5;
         doc.setFont("helvetica", "normal");
         doc.setTextColor(51, 65, 85);
         const splitText = doc.splitTextToSize(oc.impactosDanos.trim(), pageWidth - margin * 2 - 8);
@@ -189,7 +204,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         doc.setFontSize(7.5);
         doc.setTextColor(153, 27, 27);
         doc.text("• Ações Realizadas:", margin + 4, currentY);
-        currentY += 3.8;
+        currentY += 3.5;
         doc.setFont("helvetica", "normal");
         doc.setTextColor(51, 65, 85);
         const splitText = doc.splitTextToSize(oc.acoesRealizadas.trim(), pageWidth - margin * 2 - 8);
@@ -203,7 +218,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         doc.setFontSize(7.5);
         doc.setTextColor(153, 27, 27);
         doc.text("• Linha do Tempo:", margin + 4, currentY);
-        currentY += 3.8;
+        currentY += 3.5;
         doc.setFont("helvetica", "normal");
         doc.setTextColor(51, 65, 85);
         const splitText = doc.splitTextToSize(oc.linhaDoTempo.trim(), pageWidth - margin * 2 - 8);
@@ -217,7 +232,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         doc.setFontSize(7.5);
         doc.setTextColor(153, 27, 27);
         doc.text("• Condição Operacional e Restrições Atuais:", margin + 4, currentY);
-        currentY += 3.8;
+        currentY += 3.5;
         doc.setFont("helvetica", "normal");
         doc.setTextColor(51, 65, 85);
         const splitText = doc.splitTextToSize(oc.condicaoRestricoes.trim(), pageWidth - margin * 2 - 8);
@@ -225,7 +240,6 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         currentY += splitText.length * 3.5 + 2;
       }
 
-      // Border outline box for the occurrence
       const boxHeight = currentY - ocStartY + 1;
       doc.roundedRect(margin, ocStartY, pageWidth - margin * 2, boxHeight, 1, 1, "S");
       currentY += 4;
@@ -233,19 +247,11 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   }
 
   // --- SEÇÃO 2: DESEMPENHO OPERACIONAL DOS SETORES ---
-  checkPageBreak(30);
-  doc.setFillColor(...headerBg);
-  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 7, 1, 1, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("2. DESEMPENHO OPERACIONAL POR SETOR", margin + 3, currentY + 4.8);
-
-  currentY += 10;
+  drawSectionHeader("2. DESEMPENHO OPERACIONAL POR SETOR");
 
   // Iterate over sectors
   SETORES.forEach((setor, index) => {
-    checkPageBreak(35);
+    checkPageBreak(30);
 
     const sDados = dados[setor.id] || {};
     const setorNumber = index + 1;
@@ -254,16 +260,16 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
     doc.setFillColor(241, 245, 249); // Slate 100
     doc.setDrawColor(203, 213, 225);
     doc.rect(margin, currentY, pageWidth - margin * 2, 6, "FD");
-    
+
     doc.setFillColor(...primaryColor);
     doc.rect(margin, currentY, 3, 6, "F");
 
     doc.setTextColor(15, 23, 42);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.text(`${setorNumber}. ${setor.label.toUpperCase()}`, margin + 6, currentY + 4.2);
+    doc.setFontSize(8);
+    doc.text(`${setorNumber}. ${setor.label.toUpperCase()}`, margin + 5, currentY + 4.2);
 
-    currentY += 8;
+    currentY += 7.5;
 
     // Extract regular fields vs list fields (atividades / pendencias)
     const paramRows: Array<[string, string, string, string]> = [];
@@ -292,7 +298,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         if (displayVal !== "-" && campo.un) {
           displayVal = `${displayVal} ${campo.un}`;
         }
-        
+
         let metaStr = campo.meta !== undefined ? `${campo.meta}${campo.un ? ` ${campo.un}` : ""}` : "-";
         if (campo.id.startsWith("elevacao_rake")) metaStr = "< 7 Pol (Atenção 7-11 / Crítico > 11)";
         else if (campo.id.startsWith("solidos_45") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("solidos_"))) metaStr = "63 - 66% (Crítico > 66%)";
@@ -305,7 +311,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         if (val !== undefined && val !== "" && !isNaN(Number(val))) {
           const numVal = Number(val);
           const sType = st(val, campo.meta, campo.id, setor.id);
-          
+
           if (campo.id.startsWith("paradas")) {
             status = numVal === 0 ? "OK (0h)" : `${numVal}h Parada`;
           } else if (campo.id.startsWith("elevacao_rake")) {
@@ -333,7 +339,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
       }
     });
 
-    // Draw Param Table if rows exist
+    // Draw Param Table
     if (paramRows.length > 0) {
       autoTable(doc, {
         startY: currentY,
@@ -349,7 +355,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         },
         styles: {
           fontSize: 7.5,
-          cellPadding: 1.6,
+          cellPadding: 1.5,
           textColor: [30, 41, 59],
         },
         columnStyles: {
@@ -372,22 +378,23 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
               dataCell.cell.styles.fontStyle = "bold";
             }
           }
-        }
+        },
       });
 
-      currentY = (doc as any).lastAutoTable.finalY + 4;
+      currentY = (doc as any).lastAutoTable.finalY + 3.5;
     }
 
     // Atividades Realizadas Box
     if (atividadesList.length > 0) {
-      checkPageBreak(12 + atividadesList.length * 4);
+      checkPageBreak(10 + atividadesList.length * 4);
       doc.setFillColor(240, 253, 244); // Green 50
       doc.setDrawColor(187, 247, 208); // Green 200
-      
+
+      const atvStartY = currentY;
       doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(22, 101, 52); // Green 800
-      doc.text("✔️ ATIVIDADES REALIZADAS:", margin + 3, currentY + 3.5);
+      doc.text("[ATIVIDADES REALIZADAS]", margin + 3, currentY + 3.5);
       currentY += 5.5;
 
       atividadesList.forEach(atv => {
@@ -396,22 +403,25 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         doc.setFontSize(7.5);
         const splitText = doc.splitTextToSize(`• ${atv}`, pageWidth - margin * 2 - 8);
         doc.text(splitText, margin + 4, currentY);
-        currentY += splitText.length * 3.5;
+        currentY += splitText.length * 3.4;
       });
 
-      currentY += 2;
+      const atvBoxHeight = currentY - atvStartY + 1.5;
+      doc.roundedRect(margin, atvStartY, pageWidth - margin * 2, atvBoxHeight, 1, 1, "S");
+      currentY += 3;
     }
 
     // Pendências Críticas Box
     if (pendenciasList.length > 0) {
-      checkPageBreak(12 + pendenciasList.length * 4);
+      checkPageBreak(10 + pendenciasList.length * 4);
       doc.setFillColor(255, 247, 237); // Orange 50
       doc.setDrawColor(254, 215, 170); // Orange 200
 
+      const pendStartY = currentY;
       doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(154, 52, 18); // Orange 800
-      doc.text("🔴 PENDÊNCIAS CRÍTICAS / ACOMPANHAMENTO:", margin + 3, currentY + 3.5);
+      doc.text("[PENDÊNCIAS CRÍTICAS / ACOMPANHAMENTO]", margin + 3, currentY + 3.5);
       currentY += 5.5;
 
       pendenciasList.forEach(pend => {
@@ -420,10 +430,12 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
         doc.setFontSize(7.5);
         const splitText = doc.splitTextToSize(`• ${pend}`, pageWidth - margin * 2 - 8);
         doc.text(splitText, margin + 4, currentY);
-        currentY += splitText.length * 3.5;
+        currentY += splitText.length * 3.4;
       });
 
-      currentY += 2;
+      const pendBoxHeight = currentY - pendStartY + 1.5;
+      doc.roundedRect(margin, pendStartY, pageWidth - margin * 2, pendBoxHeight, 1, 1, "S");
+      currentY += 3;
     }
 
     // Ocorrências do Setor (se houver texto)
@@ -431,47 +443,42 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
       checkPageBreak(10);
       doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(100, 116, 139);
+      doc.setTextColor(71, 85, 105);
       doc.text("Observações do Setor:", margin + 2, currentY + 3);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(51, 65, 85);
       const splitText = doc.splitTextToSize(ocorrenciaText, pageWidth - margin * 2 - 4);
-      doc.text(splitText, margin + 2, currentY + 7);
-      currentY += 8 + splitText.length * 3.5;
+      doc.text(splitText, margin + 2, currentY + 6.5);
+      currentY += 7.5 + splitText.length * 3.4;
     }
 
-    currentY += 4;
+    currentY += 3.5;
   });
 
   // --- SEÇÃO 3: AÇÕES OPERATIVAS PARA O PRÓXIMO TURNO ---
   const acoesValidas = (acoes || []).filter(a => a && a.trim().length > 0);
   if (acoesValidas.length > 0) {
-    checkPageBreak(25 + acoesValidas.length * 5);
-    doc.setFillColor(...headerBg);
-    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 7, 1, 1, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("3. AÇÕES OPERATIVAS PARA O PRÓXIMO TURNO", margin + 3, currentY + 4.8);
-
-    currentY += 9;
+    drawSectionHeader("3. AÇÕES OPERATIVAS PARA O PRÓXIMO TURNO");
 
     acoesValidas.forEach((acao, i) => {
+      checkPageBreak(10);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(margin, currentY, pageWidth - margin * 2, 7, 1, 1, "FD");
 
-      doc.setFontSize(8);
+      const splitText = doc.splitTextToSize(acao, pageWidth - margin * 2 - 24);
+      const rowHeight = Math.max(7, splitText.length * 3.5 + 3);
+      doc.roundedRect(margin, currentY, pageWidth - margin * 2, rowHeight, 1, 1, "FD");
+
+      doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...primaryColor);
-      doc.text(`[AÇÃO ${i + 1}]`, margin + 3, currentY + 4.8);
+      doc.text(`[AÇÃO ${i + 1}]`, margin + 3, currentY + 4.5);
 
       doc.setFont("helvetica", "normal");
       doc.setTextColor(15, 23, 42);
-      const splitText = doc.splitTextToSize(acao, pageWidth - margin * 2 - 25);
-      doc.text(splitText, margin + 22, currentY + 4.8);
+      doc.text(splitText, margin + 21, currentY + 4.5);
 
-      currentY += 8.5;
+      currentY += rowHeight + 2;
     });
 
     currentY += 3;
@@ -479,27 +486,19 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
 
   // --- SEÇÃO 4: COMENTÁRIOS E OBSERVAÇÕES GERAIS ---
   if (obs && obs.trim().length > 0) {
-    checkPageBreak(25);
-    doc.setFillColor(...headerBg);
-    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 7, 1, 1, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("4. COMENTÁRIOS OPERACIONAIS E DIRETRIZES GERAIS", margin + 3, currentY + 4.8);
-
-    currentY += 9;
+    drawSectionHeader("4. COMENTÁRIOS OPERACIONAIS E DIRETRIZES GERAIS");
 
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
-    
+
     const splitObs = doc.splitTextToSize(obs.trim(), pageWidth - margin * 2 - 8);
-    const boxH = Math.max(12, splitObs.length * 4 + 6);
-    
+    const boxH = Math.max(10, splitObs.length * 3.6 + 5);
+
     doc.roundedRect(margin, currentY, pageWidth - margin * 2, boxH, 1, 1, "FD");
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(30, 41, 59);
-    doc.text(splitObs, margin + 4, currentY + 5);
+    doc.text(splitObs, margin + 4, currentY + 4.5);
 
     currentY += boxH + 6;
   }
@@ -508,28 +507,29 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
   const totalPages = (doc.internal as any).getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    
+
     // Top subtle bar on subsequent pages
     if (i > 1) {
       doc.setFillColor(241, 245, 249);
-      doc.rect(margin, 8, pageWidth - margin * 2, 5, "F");
-      doc.setFontSize(7);
+      doc.rect(margin, 6, pageWidth - margin * 2, 5, "F");
+      doc.setFontSize(6.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(100, 116, 139);
-      doc.text(`RELATÓRIO DE TURNO · TURMA ${turma || "-"} · ${fmtData(data)} (${turno === "diurno" ? "DIURNO" : "NOTURNO"})`, margin + 2, 11.5);
+      const subTurnoLabel = turno === "diurno" ? "DIURNO" : "NOTURNO";
+      doc.text(`RELATÓRIO DE TURNO · TURMA ${turma || "-"} · ${fmtData(data)} (${subTurnoLabel})`, margin + 2, 9.5);
     }
 
     // Bottom footer line
     doc.setDrawColor(226, 232, 240);
-    doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+    doc.line(margin, pageHeight - 10, pageWidth - margin, pageHeight - 10);
 
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(148, 163, 184); // Slate 400
-    doc.text("Planta de Beneficiamento de Cobre · Sistema de Relatório de Turno", margin, pageHeight - 7.5);
+    doc.text("Planta de Beneficiamento de Cobre · Sistema de Relatório de Turno", margin, pageHeight - 6);
 
     const pageStr = `Página ${i} de ${totalPages}`;
-    doc.text(pageStr, pageWidth - margin - doc.getTextWidth(pageStr), pageHeight - 7.5);
+    doc.text(pageStr, pageWidth - margin - doc.getTextWidth(pageStr), pageHeight - 6);
   }
 
   // Save the PDF file with a clean timestamped filename
