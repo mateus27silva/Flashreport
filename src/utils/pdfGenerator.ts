@@ -298,7 +298,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
     currentY += 7.5;
 
     // Extract regular fields vs list fields (atividades / pendencias)
-    const paramRows: Array<[string, string, string, string]> = [];
+    const paramRows: Array<[string, string, string, string, string]> = [];
     let atividadesList: string[] = [];
     let pendenciasList: string[] = [];
     let ocorrenciaText = "";
@@ -331,24 +331,38 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
 
         let metaStr = campo.meta !== undefined ? `${campo.meta}${campo.un ? ` ${campo.un}` : ""}` : "-";
         if (campo.id.startsWith("elevacao_rake")) metaStr = "< 7 Pol (Atenção 7-11 / Crítico > 11)";
+        else if (campo.id === "retido_meia" || campo.id.startsWith("retido_meia")) metaStr = "< 11% (Atenção 11-12 / Crítico > 12)";
+        else if (campo.id === "total_autonomia" || campo.id.startsWith("total_autonomia")) metaStr = "> 4800 t (Atenção 3500-4800 / Crítico < 3500)";
+        else if (campo.id === "producao_moagem" || (setor.id === "moagem" && campo.id.startsWith("producao"))) metaStr = "≥ 7200 t (Crítico < 7200)";
+        else if (campo.id === "nivel_camara_a" || campo.id.startsWith("nivel_camara_a")) metaStr = "80 - 100% (Atenção 70-80 / Crítico < 70)";
         else if (campo.id.startsWith("solidos_45") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("solidos_"))) metaStr = "63 - 66% (Crítico > 66%)";
-        else if (campo.id.startsWith("torque_ep") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("torque"))) metaStr = "< 12% (Atenção 12-20 / Crítico > 20)";
+        else if (campo.id.startsWith("torque_ep") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("torque")) || (setor.id === "espessamento_conc" && campo.id.startsWith("torque"))) metaStr = "< 12% (Atenção 12-20 / Crítico > 20)";
         else if (setor.id === "remoagem" && campo.id === "produtividade") metaStr = "≤ 275 t/h (Crítico > 275)";
-        else if (campo.id === "nivel_tanque" || campo.id === "nivel_camara_a" || campo.id === "ciclos") metaStr = "-";
+        else if (campo.id === "nivel_tanque" || campo.id === "ciclos") metaStr = "-";
 
         let status = "-";
+        const rawAcao = sDados[`acao_${campo.id}`];
+        let acaoText = rawAcao && String(rawAcao).trim() ? sanitizePdfText(String(rawAcao).trim()) : "-";
 
         if (val !== undefined && val !== "" && !isNaN(Number(val))) {
           const numVal = Number(val);
           const sType = st(val, campo.meta, campo.id, setor.id);
 
           if (campo.id.startsWith("paradas")) {
-            status = numVal === 0 ? "OK (0h)" : `${numVal}h Parada`;
+            status = "Apurado";
           } else if (campo.id.startsWith("elevacao_rake")) {
             status = sType === "ok" ? "OK (<7 Pol)" : sType === "alerta" ? "Atenção (7-11 Pol)" : "Crítico (>11 Pol)";
+          } else if (campo.id === "retido_meia" || campo.id.startsWith("retido_meia")) {
+            status = sType === "ok" ? "OK (<11%)" : sType === "alerta" ? "Atenção (11-12%)" : "Crítico (>12%)";
+          } else if (campo.id === "total_autonomia" || campo.id.startsWith("total_autonomia")) {
+            status = sType === "ok" ? "OK (>4800 t)" : sType === "alerta" ? "Atenção (3500-4800 t)" : "Crítico (<3500 t)";
+          } else if (campo.id === "producao_moagem" || (setor.id === "moagem" && campo.id.startsWith("producao"))) {
+            status = sType === "ok" ? "Atingida (≥7200 t)" : "Abaixo Meta (<7200 t)";
+          } else if (campo.id === "nivel_camara_a" || campo.id.startsWith("nivel_camara_a")) {
+            status = sType === "ok" ? "OK (80-100%)" : sType === "alerta" ? "Atenção (70-80%)" : "Crítico (<70%)";
           } else if (campo.id.startsWith("solidos_45") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("solidos_"))) {
             status = sType === "ok" ? "OK (63-66%)" : sType === "alerta" ? "Atenção (<63%)" : "Crítico (>66%)";
-          } else if (campo.id.startsWith("torque_ep") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("torque"))) {
+          } else if (campo.id.startsWith("torque_ep") || (setor.id === "espessamento_rejeito" && campo.id.startsWith("torque")) || (setor.id === "espessamento_conc" && campo.id.startsWith("torque"))) {
             status = sType === "ok" ? "OK (<12%)" : sType === "alerta" ? "Atenção (12-20%)" : "Crítico (>20%)";
           } else if (setor.id === "remoagem" && campo.id === "produtividade") {
             status = sType === "ok" ? "OK (≤275 t/h)" : "Crítico (>275 t/h)";
@@ -361,6 +375,10 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
           } else {
             status = "Apurado";
           }
+
+          if ((sType === "alerta" || sType === "critico") && acaoText === "-") {
+            acaoText = "Pendente de tratativa";
+          }
         } else if (val !== undefined && val !== "") {
           status = "Apurado";
         }
@@ -370,6 +388,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
           sanitizePdfText(displayVal),
           sanitizePdfText(metaStr),
           sanitizePdfText(status),
+          acaoText,
         ]);
       }
     });
@@ -379,7 +398,7 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
       autoTable(doc, {
         startY: currentY,
         margin: { left: margin, right: margin },
-        head: [["Parâmetro / Indicador", "Valor Realizado", "Meta Referência", "Situação"]],
+        head: [["Parâmetro / Indicador", "Valor Realizado", "Meta Referência", "Situação", "Tratativa"]],
         body: paramRows,
         theme: "striped",
         headStyles: {
@@ -389,15 +408,16 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
           fontStyle: "bold",
         },
         styles: {
-          fontSize: 7.5,
+          fontSize: 7,
           cellPadding: 1.5,
           textColor: [30, 41, 59],
         },
         columnStyles: {
-          0: { cellWidth: 65, fontStyle: "bold" },
-          1: { cellWidth: 35, fontStyle: "bold", halign: "center" },
-          2: { cellWidth: 45, halign: "center", textColor: [100, 116, 139] },
-          3: { cellWidth: "auto", halign: "center" },
+          0: { cellWidth: 46, fontStyle: "bold" },
+          1: { cellWidth: 26, fontStyle: "bold", halign: "center" },
+          2: { cellWidth: 32, halign: "center", textColor: [100, 116, 139] },
+          3: { cellWidth: 26, halign: "center" },
+          4: { cellWidth: "auto", halign: "left" },
         },
         didParseCell: (dataCell) => {
           if (dataCell.section === "body" && dataCell.column.index === 3) {
@@ -411,6 +431,19 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
             } else if (txt === "Abaixo Meta" || txt.startsWith("Crítico") || txt.includes("Parada")) {
               dataCell.cell.styles.textColor = [220, 38, 38];
               dataCell.cell.styles.fontStyle = "bold";
+            }
+          }
+          if (dataCell.section === "body" && dataCell.column.index === 4) {
+            const txt = String(dataCell.cell.raw);
+            if (txt === "-" || !txt) {
+              dataCell.cell.styles.textColor = [148, 163, 184];
+              dataCell.cell.styles.halign = "center";
+            } else if (txt === "Pendente de tratativa") {
+              dataCell.cell.styles.textColor = [220, 38, 38];
+              dataCell.cell.styles.fontStyle = "italic";
+            } else {
+              dataCell.cell.styles.textColor = [15, 23, 42];
+              dataCell.cell.styles.fontStyle = "normal";
             }
           }
         },

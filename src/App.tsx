@@ -1074,7 +1074,7 @@ export default function App() {
                               </span>
                             )}
                           </div>
-                          {campo.type === "number" && (campo.meta !== undefined || campo.id.startsWith("elevacao_rake") || campo.id.startsWith("solidos_45") || campo.id.startsWith("torque_ep")) && val !== "" && (
+                          {campo.type === "number" && val !== "" && val !== undefined && st(val, campo.meta, campo.id, setor.id) !== "nd" && (
                             <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
                               st(val, campo.meta, campo.id, setor.id) === "ok"
                                 ? "bg-emerald-50 text-emerald-800"
@@ -1152,6 +1152,28 @@ export default function App() {
                               <p className="text-[10px] text-slate-500 font-medium pl-1">
                                 Horas de paradas operacionais/outros (impacta na Utilização)
                               </p>
+                            )}
+
+                            {/* Campo dinâmico de Ação/Tratativa quando a Meta NÃO for atingida */}
+                            {val !== "" && val !== undefined && (st(val, campo.meta, campo.id, setor.id) === "alerta" || st(val, campo.meta, campo.id, setor.id) === "critico") && (
+                              <div className="mt-2.5 p-3 bg-amber-50/95 border border-amber-300 rounded-xl space-y-1.5 shadow-2xs">
+                                <div className="flex items-center justify-between">
+                                  <label className="flex items-center gap-1.5 text-xs font-bold text-amber-950">
+                                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                                    <span>Tratativa do Supervisor (Meta não atingida):</span>
+                                  </label>
+                                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">
+                                    {st(val, campo.meta, campo.id, setor.id) === "critico" ? "Crítico" : "Alerta"}
+                                  </span>
+                                </div>
+                                <textarea
+                                  rows={2}
+                                  placeholder="Descreva a tratativa realizada para retorno à meta..."
+                                  value={d[`acao_${campo.id}`] || ""}
+                                  onChange={e => setDado(setor.id, `acao_${campo.id}`, e.target.value)}
+                                  className="w-full bg-white border border-amber-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-lg p-2.5 text-xs text-slate-800 outline-none transition resize-none leading-relaxed placeholder:text-slate-400"
+                                />
+                              </div>
                             )}
                           </div>
                         )}
