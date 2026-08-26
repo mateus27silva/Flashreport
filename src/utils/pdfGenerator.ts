@@ -297,10 +297,11 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
 
     currentY += 7.5;
 
-    // Extract regular fields vs list fields (atividades / pendencias)
+    // Extract regular fields vs list fields (atividades / pendencias / pendencias_programacao)
     const paramRows: Array<[string, string, string, string, string]> = [];
     let atividadesList: string[] = [];
     let pendenciasList: string[] = [];
+    let pendenciasProgramacaoList: string[] = [];
     let ocorrenciaText = "";
 
     setor.campos.forEach(campo => {
@@ -315,6 +316,12 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
       } else if (campo.type === "pendencias") {
         if (Array.isArray(val)) {
           pendenciasList = val
+            .filter(x => typeof x === "string" && x.trim().length > 0)
+            .map(x => sanitizePdfText(x));
+        }
+      } else if (campo.type === "pendencias_programacao") {
+        if (Array.isArray(val)) {
+          pendenciasProgramacaoList = val
             .filter(x => typeof x === "string" && x.trim().length > 0)
             .map(x => sanitizePdfText(x));
         }
@@ -482,19 +489,19 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
     // Pendências Críticas Box
     if (pendenciasList.length > 0) {
       checkPageBreak(10 + pendenciasList.length * 4);
-      doc.setFillColor(255, 247, 237); // Orange 50
-      doc.setDrawColor(254, 215, 170); // Orange 200
+      doc.setFillColor(254, 242, 242); // Red 50
+      doc.setDrawColor(254, 202, 202); // Red 200
 
       const pendStartY = currentY;
       doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(154, 52, 18); // Orange 800
-      doc.text("[PENDÊNCIAS CRÍTICAS / ACOMPANHAMENTO]", margin + 3, currentY + 3.5);
+      doc.setTextColor(185, 28, 28); // Red 700
+      doc.text("[PENDÊNCIAS CRÍTICAS]", margin + 3, currentY + 3.5);
       currentY += 5.5;
 
       pendenciasList.forEach(pend => {
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(194, 65, 12);
+        doc.setTextColor(153, 27, 27);
         doc.setFontSize(7.5);
         const splitText = doc.splitTextToSize(`• ${pend}`, contentWidth - 8);
         doc.text(splitText, margin + 4, currentY);
@@ -503,6 +510,33 @@ export function gerarRelatorioPDF(payload: PDFDataPayload) {
 
       const pendBoxHeight = currentY - pendStartY + 1.5;
       doc.roundedRect(margin, pendStartY, contentWidth, pendBoxHeight, 1, 1, "S");
+      currentY += 3;
+    }
+
+    // Pendências de Acompanhamento (Programação) Box
+    if (pendenciasProgramacaoList.length > 0) {
+      checkPageBreak(10 + pendenciasProgramacaoList.length * 4);
+      doc.setFillColor(240, 249, 255); // Sky 50
+      doc.setDrawColor(186, 230, 253); // Sky 200
+
+      const progStartY = currentY;
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(3, 105, 161); // Sky 700
+      doc.text("[PENDÊNCIAS DE ACOMPANHAMENTO (PROGRAMAÇÃO)]", margin + 3, currentY + 3.5);
+      currentY += 5.5;
+
+      pendenciasProgramacaoList.forEach(pend => {
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(12, 74, 110); // Sky 900
+        doc.setFontSize(7.5);
+        const splitText = doc.splitTextToSize(`• ${pend}`, contentWidth - 8);
+        doc.text(splitText, margin + 4, currentY);
+        currentY += splitText.length * 3.4;
+      });
+
+      const progBoxHeight = currentY - progStartY + 1.5;
+      doc.roundedRect(margin, progStartY, contentWidth, progBoxHeight, 1, 1, "S");
       currentY += 3;
     }
 

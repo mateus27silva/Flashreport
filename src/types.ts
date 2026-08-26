@@ -6,7 +6,7 @@
 export interface Campo {
   id: string;
   label: string;
-  type: "number" | "text" | "select" | "atividades" | "pendencias";
+  type: "number" | "text" | "select" | "atividades" | "pendencias" | "pendencias_programacao";
   meta?: number;
   un?: string;
   opcoes?: string[];
@@ -73,6 +73,7 @@ export const SETORES: Setor[] = [
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+      { id: "pendencias_programacao", label: "Pendências de acompanhamento (Programação)", type: "pendencias_programacao" },
     ],
   },
   {
@@ -94,6 +95,7 @@ export const SETORES: Setor[] = [
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+      { id: "pendencias_programacao", label: "Pendências de acompanhamento (Programação)", type: "pendencias_programacao" },
     ],
   },
   {
@@ -114,6 +116,7 @@ export const SETORES: Setor[] = [
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+      { id: "pendencias_programacao", label: "Pendências de acompanhamento (Programação)", type: "pendencias_programacao" },
     ],
   },
   {
@@ -129,6 +132,9 @@ export const SETORES: Setor[] = [
       { id: "granulometria_mi03", label: "Percentual 105microns (43MI003)", type: "number", meta: 62, un: "%" },
       { id: "granulometria_mi04", label: "Percentual 105microns (43MI004)", type: "number", meta: 62, un: "%" },
       { id: "granulometria_mi05", label: "Percentual 105microns (43MI005)", type: "number", meta: 62, un: "%" },
+      { id: "solidos_ovf_mi03", label: "% Sólidos overflow (43MI003)", type: "number", un: "%" },
+      { id: "solidos_ovf_mi04", label: "% Sólidos overflow (43MI004)", type: "number", un: "%" },
+      { id: "solidos_ovf_mi05", label: "% Sólidos overflow (43MI005)", type: "number", un: "%" },
       { id: "paradas_manutencao", label: "Paradas de Manutenção", type: "number", un: "h" },
       { id: "paradas_outros", label: "Paradas de Outros (OUT)", type: "number", un: "h" },
       { id: "produtividade_total", label: "Produtividade Total", type: "number", meta: 600, un: "t/h" },
@@ -137,6 +143,7 @@ export const SETORES: Setor[] = [
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+      { id: "pendencias_programacao", label: "Pendências de acompanhamento (Programação)", type: "pendencias_programacao" },
     ],
   },
   {
@@ -159,6 +166,7 @@ export const SETORES: Setor[] = [
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+      { id: "pendencias_programacao", label: "Pendências de acompanhamento (Programação)", type: "pendencias_programacao" },
     ],
   },
   {
@@ -184,6 +192,7 @@ export const SETORES: Setor[] = [
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+      { id: "pendencias_programacao", label: "Pendências de acompanhamento (Programação)", type: "pendencias_programacao" },
     ],
   },
   {
@@ -205,6 +214,7 @@ export const SETORES: Setor[] = [
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+      { id: "pendencias_programacao", label: "Pendências de acompanhamento (Programação)", type: "pendencias_programacao" },
     ],
   },
   {
@@ -231,6 +241,7 @@ export const SETORES: Setor[] = [
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+      { id: "pendencias_programacao", label: "Pendências de acompanhamento (Programação)", type: "pendencias_programacao" },
     ],
   },
   {
@@ -253,6 +264,7 @@ export const SETORES: Setor[] = [
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+      { id: "pendencias_programacao", label: "Pendências de acompanhamento (Programação)", type: "pendencias_programacao" },
     ],
   },
   {
@@ -275,6 +287,7 @@ export const SETORES: Setor[] = [
       { id: "ocorrencias", label: "Ocorrências", type: "text" },
       { id: "atividades", label: "Atividades realizadas", type: "atividades" },
       { id: "pendencias", label: "Pendências críticas", type: "pendencias" },
+      { id: "pendencias_programacao", label: "Pendências de acompanhamento (Programação)", type: "pendencias_programacao" },
     ],
   },
 ];
@@ -484,19 +497,31 @@ export function gerarWpp({ data, turno, turma, supervisor, temaDds, dados, acoes
   }
 
   // Pendências críticas consolidadas de todos os setores
-  const todasPendencias: string[] = [];
+  const todasPendenciasCriticas: string[] = [];
+  const todasPendenciasAcomp: string[] = [];
   SETORES.forEach(s => {
     const d = dados[s.id] || {};
-    const pend = s.campos.find(c => c.type === "pendencias");
-    if (pend) {
-      const itens = ((d[pend.id] as string[]) || []).filter(x => x && x.trim());
-      itens.forEach(it => todasPendencias.push(`  • *${s.label}:* ${it}`));
+    const pendCrit = s.campos.find(c => c.type === "pendencias");
+    if (pendCrit) {
+      const itens = ((d[pendCrit.id] as string[]) || []).filter(x => x && x.trim());
+      itens.forEach(it => todasPendenciasCriticas.push(`  • *${s.label}:* ${it}`));
+    }
+    const pendAcomp = s.campos.find(c => c.type === "pendencias_programacao");
+    if (pendAcomp) {
+      const itens = ((d[pendAcomp.id] as string[]) || []).filter(x => x && x.trim());
+      itens.forEach(it => todasPendenciasAcomp.push(`  • *${s.label}:* ${it}`));
     }
   });
 
-  if (todasPendencias.length > 0) {
+  if (todasPendenciasCriticas.length > 0) {
     L.push(`⚠️ *PENDÊNCIAS CRÍTICAS — TODOS OS SETORES*`);
-    todasPendencias.forEach(l => L.push(l));
+    todasPendenciasCriticas.forEach(l => L.push(l));
+    L.push(``);
+  }
+
+  if (todasPendenciasAcomp.length > 0) {
+    L.push(`📋 *PENDÊNCIAS DE ACOMPANHAMENTO (PROGRAMAÇÃO) — TODOS OS SETORES*`);
+    todasPendenciasAcomp.forEach(l => L.push(l));
     L.push(``);
   }
 
@@ -545,7 +570,7 @@ export function gerarWpp({ data, turno, turma, supervisor, temaDds, dados, acoes
     const d = dados[s.id] || {};
     const campos = s.campos.filter(c => {
       if (c.type === "text") return d[c.id] && d[c.id].trim();
-      if (c.type === "atividades" || c.type === "pendencias") {
+      if (c.type === "atividades" || c.type === "pendencias" || c.type === "pendencias_programacao") {
         return Array.isArray(d[c.id]) && d[c.id].some((x: string) => x && x.trim());
       }
       return d[c.id] !== "" && d[c.id] !== undefined;
@@ -574,6 +599,13 @@ export function gerarWpp({ data, turno, turma, supervisor, temaDds, dados, acoes
         const itens = ((d[c.id] as string[]) || []).filter(x => x && x.trim());
         if (!itens.length) return;
         L.push(`🔴 *Pendências críticas:*`);
+        itens.forEach((it, i) => L.push(`   ${i + 1}. ${it}`));
+        return;
+      }
+      if (c.type === "pendencias_programacao") {
+        const itens = ((d[c.id] as string[]) || []).filter(x => x && x.trim());
+        if (!itens.length) return;
+        L.push(`📋 *Pendências de acompanhamento (Programação):*`);
         itens.forEach((it, i) => L.push(`   ${i + 1}. ${it}`));
         return;
       }
